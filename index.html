@@ -7,54 +7,30 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-
-  <!-- Loading Screen -->
-  <div id="loadingScreen" class="overlay">Loading...</div>
-
-  <!-- Navigation -->
+  <!-- Navigation Bar -->
   <div id="navbar">
-    <span class="logo">Bomb Clone</span>
-    <img id="profileIcon" src="profile.png" alt="Profile" />
+    <div id="logo">Game</div>
+    <img id="profileIcon" src="defaulticon.png" alt="Profile" />
   </div>
 
   <!-- Main Menu -->
-  <div id="mainMenu" class="page visible">
+  <div id="mainMenu">
     <button onclick="startGame()">Play</button>
   </div>
 
-  <!-- Login Modal -->
-  <div id="loginModal" class="modal">
-    <div class="modal-content">
-      <span id="closeLogin" class="close">&times;</span>
-      <h2>Login</h2>
-      <input type="email" id="loginEmail" placeholder="Email" />
-      <input type="password" id="loginPassword" placeholder="Password" />
-      <button onclick="login()">Login</button>
-      <p id="toRegister" class="link">No account? Register here</p>
-    </div>
-  </div>
-
-  <!-- Register Modal -->
-  <div id="registerModal" class="modal">
-    <div class="modal-content">
-      <span id="closeRegister" class="close">&times;</span>
-      <h2>Register</h2>
-      <input type="email" id="registerEmail" placeholder="Email" />
-      <input type="password" id="registerPassword" placeholder="Password" />
-      <button onclick="register()">Register</button>
-    </div>
-  </div>
-
   <!-- Profile Page -->
-  <div id="profilePage" class="page hidden">
-    <img src="default-profile.png" alt="Profile Image" />
-    <h2 id="nickname">Player</h2>
-    <p>ID: <span id="userID">000000</span> <button onclick="copyUserID()">Copy</button></p>
-    <button onclick="deleteAccount()">Delete Account</button>
-    <button onclick="backToMenu()">Back</button>
+  <div id="profilePage" class="hidden">
+    <div class="profile-container">
+      <img id="profilePic" src="defaulticon.png" alt="Profile" />
+      <h2 id="nickname">player_#0000</h2>
+      <p id="userID" class="copy-id">ID: <span>#0000</span> <button onclick="copyUserID()">Copy</button></p>
+      <p id="userEmail">Gmail: example@gmail.com</p>
+      <input type="file" id="uploadProfile" accept="image/*" />
+      <button onclick="deleteAccount()">Delete Account</button>
+      <button onclick="backToMenu()">Back</button>
+    </div>
   </div>
 
-  <!-- Firebase Script -->
   <script type="module" src="app.js"></script>
 </body>
-</html>
+</html> v1

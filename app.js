@@ -1,14 +1,5 @@
-// Firebase setup
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-import {
-  getAuth,
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  sendEmailVerification,
-  deleteUser,
-  signOut
-} from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, deleteUser } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
@@ -23,111 +14,36 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
-// Wait for DOM + Firebase to load
-window.addEventListener("load", () => {
-  const loadingScreen = document.getElementById("loadingScreen");
-  loadingScreen.style.display = "none";
+function showElement(id) {
+  document.getElementById(id).classList.remove("hidden");
+}
 
-  // Check auth state
-  onAuthStateChanged(auth, (user) => {
-    if (user && user.emailVerified) {
-      showMainMenu();
-      updateProfileUI(user);
-    } else {
-      showMainMenu();
-    }
-  });
-});
+function hideElement(id) {
+  document.getElementById(id).classList.add("hidden");
+}
 
-// Helper DOM functions
-const showElement = (id) => document.getElementById(id).classList.add("visible");
-const hideElement = (id) => document.getElementById(id).classList.remove("visible");
-const showModal = (id) => document.getElementById(id).style.display = "flex";
-const hideModal = (id) => document.getElementById(id).style.display = "none";
+function getUserID(uid) {
+  return uid ? uid.slice(-4) : "0000";
+}
 
-// Event bindings
-document.getElementById("profileIcon").onclick = () => {
+function copyUserID() {
+  const id = document.getElementById("userID").querySelector("span").innerText;
+  navigator.clipboard.writeText(id);
+}
+
+function deleteAccount() {
   const user = auth.currentUser;
-  if (!user) {
-    showModal("loginModal");
-  } else {
-    showProfile();
-  }
-};
-
-document.getElementById("closeLogin").onclick = () => hideModal("loginModal");
-document.getElementById("closeRegister").onclick = () => hideModal("registerModal");
-document.getElementById("toRegister").onclick = () => {
-  hideModal("loginModal");
-  showModal("registerModal");
-};
-
-// Auth functions
-window.login = async () => {
-  const email = document.getElementById("loginEmail").value;
-  const pass = document.getElementById("loginPassword").value;
-
-  try {
-    const result = await signInWithEmailAndPassword(auth, email, pass);
-    if (!result.user.emailVerified) {
-      alert("Please verify your email before logging in.");
-      await signOut(auth);
-    } else {
-      hideModal("loginModal");
-      showMainMenu();
-    }
-  } catch (err) {
-    alert("Login error: " + err.message);
-  }
-};
-
-window.register = async () => {
-  const email = document.getElementById("registerEmail").value;
-  const pass = document.getElementById("registerPassword").value;
-
-  try {
-    const result = await createUserWithEmailAndPassword(auth, email, pass);
-    await sendEmailVerification(result.user);
-    alert("Verification email sent. Check your inbox.");
-    hideModal("registerModal");
-  } catch (err) {
-    alert("Register error: " + err.message);
-  }
-};
-
-window.deleteAccount = async () => {
-  const user = auth.currentUser;
-  if (!user) return;
-
-  if (confirm("Are you sure you want to delete your account? This is permanent.")) {
-    try {
-      await deleteUser(user);
+  if (user) {
+    deleteUser(user).then(() => {
       alert("Account deleted.");
-      showMainMenu();
-    } catch (err) {
-      alert("Delete failed: " + err.message);
-    }
+      location.reload();
+    }).catch(err => {
+      alert("Failed to delete account.");
+    });
   }
-};
+}
 
-window.copyUserID = () => {
-  const id = document.getElementById("userID").innerText;
-  navigator.clipboard.writeText(id).then(() => {
-    alert("Copied ID: " + id);
-  });
-};
-
-window.startGame = () => {
-  alert("Game starting... (stub)");
-};
-
-window.backToMenu = () => {
-  hideElement("profilePage");
-  showMainMenu();
-};
-
-// UI updates
-function showMainMenu() {
+function backToMenu() {
   hideElement("profilePage");
   showElement("mainMenu");
 }
@@ -136,15 +52,39 @@ function showProfile() {
   const user = auth.currentUser;
   if (!user) return;
 
-  const nickname = user.displayName || `player_${user.uid.slice(0, 6)}`;
+  const nickname = user.displayName || `player_#${getUserID(user.uid)}`;
+  const userID = `#${getUserID(user.uid)}`;
+  const userEmail = user.email || "unknown@gmail.com";
+
   document.getElementById("nickname").innerText = nickname;
-  document.getElementById("userID").innerText = user.uid.slice(0, 6);
+  document.getElementById("userID").querySelector("span").innerText = userID;
+  document.getElementById("userEmail").innerText = `Gmail: ${userEmail}`;
+  document.getElementById("profilePic").src = user.photoURL || "defaulticon.png";
+
   hideElement("mainMenu");
   showElement("profilePage");
 }
 
-function updateProfileUI(user) {
-  const nickname = user.displayName || `player_${user.uid.slice(0, 6)}`;
-  document.getElementById("nickname").innerText = nickname;
-  document.getElementById("userID").innerText = user.uid.slice(0, 6);
+function startGame() {
+  alert("Game starting...");
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+  const profileIcon = document.getElementById("profileIcon");
+
+  // Always attach the click handler
+  if (profileIcon) {
+    profileIcon.addEventListener("click", () => {
+      const user = auth.currentUser;
+      if (user) showProfile();
+      else alert("Please log in first.");
+    });
+  }
+
+  // Optional: auto-show profile if already logged in
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      console.log("User is signed in:", user.email);
+    }
+  });
+});

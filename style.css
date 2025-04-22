@@ -1,7 +1,7 @@
 body {
   margin: 0;
-  font-family: sans-serif;
-  background: #111;
+  font-family: Arial, sans-serif;
+  background-color: #111;
   color: white;
 }
 
@@ -18,7 +18,7 @@ body {
   box-sizing: border-box;
 }
 
-.logo {
+#logo {
   font-size: 1.5rem;
 }
 
@@ -28,87 +28,65 @@ body {
   cursor: pointer;
   border-radius: 50%;
   object-fit: cover;
-  margin-left: auto; /* Push it to the right */
+  margin-left: auto;
 }
 
-.page {
-  display: none;
+#mainMenu {
   padding-top: 80px;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-  min-height: 100vh;
-}
-
-.visible {
-  display: flex !important;
-}
-
-.modal {
-  display: none;
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0, 0, 0, 0.75);
-  justify-content: center;
-  align-items: center;
-  z-index: 2000;
-}
-
-.modal-content {
-  background: #333;
-  padding: 20px;
-  border-radius: 8px;
-  width: 90%;
-  max-width: 400px;
-}
-
-input {
-  display: block;
-  width: 100%;
-  margin: 10px 0;
-  padding: 10px;
-  background: #222;
-  color: white;
-  border: 1px solid #444;
+  text-align: center;
 }
 
 button {
-  padding: 10px;
-  background: #444;
+  background-color: #444;
   color: white;
   border: none;
+  padding: 10px 20px;
+  margin: 0.5rem;
   cursor: pointer;
-  margin-top: 10px;
+  border-radius: 5px;
 }
 
 button:hover {
-  background: #555;
+  background-color: #666;
 }
 
-.link {
-  color: #66f;
-  cursor: pointer;
-  text-decoration: underline;
-  text-align: center;
-  margin-top: 10px;
+.hidden {
+  display: none;
 }
 
-.close {
-  float: right;
-  cursor: pointer;
-  font-size: 1.5rem;
-  color: red;
-}
-
-.overlay {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%;
-  height: 100%;
-  background: #000;
+#profilePage {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem;
+  background-color: #1e1e1e;
   color: white;
+}
+
+.profile-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  max-width: 300px;
+  width: 100%;
+}
+
+#profilePic {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+  background-color: #444;
+}
+
+.copy-id {
   display: flex;
   align-items: center;
-  justify-content: center;
-  z-index: 3000;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+input[type="file"] {
+  color: white;
 }
