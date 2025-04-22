@@ -5,7 +5,7 @@
   <title>Bomb Party</title>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";const firebaseConfig = {
+    import { getAuth, createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";const firebaseConfig = {
   apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
   authDomain: "kbbig-s.firebaseapp.com",
   projectId: "kbbig-s",
@@ -22,9 +22,12 @@ const loginModal = document.getElementById("loginModal");
 const registerModal = document.getElementById("registerModal");
 const profileModal = document.getElementById("profileModal");
 const alertBox = document.getElementById("alertBox");
+const profileEmail = document.getElementById("profileEmail");
+const profileID = document.getElementById("profileID");
+const profileIcon = document.querySelector(".profile-icon");
 
 window.showLoginModal = () => {
-  if (auth.currentUser) {
+  if (auth.currentUser && auth.currentUser.emailVerified) {
     profileModal.style.display = 'flex';
   } else {
     loginModal.style.display = 'flex';
@@ -68,9 +71,11 @@ window.login = async () => {
 window.register = async () => {
   const email = document.getElementById("registerEmail").value;
   const password = document.getElementById("registerPassword").value;
+  const username = document.getElementById("registerUsername").value;
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
+    await updateProfile(user, { displayName: username });
     await sendEmailVerification(user);
     showAlert("Verification email sent to " + email);
     registerModal.style.display = "none";
@@ -86,11 +91,15 @@ window.logout = async () => {
 };
 
 onAuthStateChanged(auth, (user) => {
-  const profileEmail = document.getElementById("profileEmail");
   if (user && user.emailVerified) {
     profileEmail.innerText = user.email;
+    profileID.innerText = `#${user.uid.slice(-5)}`;
+    profileIcon.style.backgroundImage = `url('https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'U')}&background=random')`;
+    profileIcon.style.backgroundSize = 'cover';
   } else {
     profileEmail.innerText = "Not logged in";
+    profileID.innerText = "";
+    profileIcon.style.backgroundImage = '';
   }
 });
 
@@ -134,6 +143,8 @@ onAuthStateChanged(auth, (user) => {
   background-color: white;
   margin-left: auto;
   cursor: pointer;
+  background-position: center;
+  background-size: cover;
 }
 
 .main-menu {
@@ -231,7 +242,7 @@ onAuthStateChanged(auth, (user) => {
     <div class="profile-icon" onclick="showLoginModal()"></div>
   </div>  <div class="main-menu">
     <button class="main-button" onclick="alert('Play clicked')">Play</button>
-  </div>  <!-- Alert Box -->  <div id="alertBox"></div>  <!-- Login Modal -->  <div class="modal" id="loginModal">
+  </div>  <div id="alertBox"></div>  <div class="modal" id="loginModal">
     <div class="modal-content">
       <h2>Login</h2>
       <input type="email" placeholder="Email" id="loginUsername">
@@ -239,20 +250,21 @@ onAuthStateChanged(auth, (user) => {
       <button onclick="login()">Login</button>
       <p>No account? <a onclick="showRegisterModal()">Register here!</a></p>
     </div>
-  </div>  <!-- Register Modal -->  <div class="modal" id="registerModal">
+  </div>  <div class="modal" id="registerModal">
     <div class="modal-content">
       <h2>Register</h2>
-      <input type="text" placeholder="Username (not used yet)" id="registerUsername">
+      <input type="text" placeholder="Username" id="registerUsername">
       <input type="password" placeholder="Password" id="registerPassword">
       <input type="email" placeholder="Email" id="registerEmail">
       <button onclick="register()">Register</button>
     </div>
-  </div>  <!-- Profile Modal -->  <div class="modal" id="profileModal">
+  </div>  <div class="modal" id="profileModal">
     <div class="modal-content">
       <h2>Profile</h2>
       <p>Email: <span id="profileEmail"></span></p>
+      <p>ID: <span id="profileID"></span></p>
       <button onclick="logout()">Logout</button>
     </div>
   </div>
 </body>
-</html>
+</html>🤡
