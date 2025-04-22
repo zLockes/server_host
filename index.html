@@ -234,16 +234,19 @@
             const data = snap.data();
             document.getElementById("nickname").textContent = data.nickname || `player_${data.id}`;
             document.getElementById("userID").textContent = data.id;
-            document.getElementById("mainMenu").style.display = "none";
-            document.getElementById("profilePage").style.display = "flex";
 
-            profileIcon.onclick = () => {
+            document.getElementById("mainMenu").style.display = "flex";
+            document.getElementById("profilePage").style.display = "none";
+
+            profileIcon.addEventListener("click", () => {
               document.getElementById("mainMenu").style.display = "none";
               document.getElementById("profilePage").style.display = "flex";
-            };
+            }, { once: true });
           }
         } else {
-          profileIcon.onclick = () => loginModal.style.display = "block";
+          profileIcon.addEventListener("click", () => {
+            loginModal.style.display = "block";
+          });
           document.getElementById("mainMenu").style.display = "flex";
           document.getElementById("profilePage").style.display = "none";
         }
@@ -260,6 +263,7 @@
           await signOut(auth);
         } else {
           loginModal.style.display = "none";
+          location.reload();
         }
       } catch (err) {
         alert("Login error: " + err.message);
