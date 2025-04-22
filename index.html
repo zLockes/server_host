@@ -5,7 +5,7 @@
   <title>Bomb Party</title>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";const firebaseConfig = {
+    import { getAuth, createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";const firebaseConfig = {
   apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
   authDomain: "kbbig-s.firebaseapp.com",
   projectId: "kbbig-s",
@@ -20,8 +20,17 @@ const auth = getAuth(app);
 
 const loginModal = document.getElementById("loginModal");
 const registerModal = document.getElementById("registerModal");
+const profileModal = document.getElementById("profileModal");
+const alertBox = document.getElementById("alertBox");
 
-window.showLoginModal = () => loginModal.style.display = 'flex';
+window.showLoginModal = () => {
+  if (auth.currentUser) {
+    profileModal.style.display = 'flex';
+  } else {
+    loginModal.style.display = 'flex';
+  }
+};
+
 window.showRegisterModal = () => {
   loginModal.style.display = 'none';
   registerModal.style.display = 'flex';
@@ -30,7 +39,14 @@ window.showRegisterModal = () => {
 window.onclick = function(event) {
   if (event.target === loginModal) loginModal.style.display = "none";
   if (event.target === registerModal) registerModal.style.display = "none";
+  if (event.target === profileModal) profileModal.style.display = "none";
 }
+
+const showAlert = (message) => {
+  alertBox.innerText = message;
+  alertBox.style.display = 'block';
+  setTimeout(() => alertBox.style.display = 'none', 3000);
+};
 
 window.login = async () => {
   const email = document.getElementById("loginUsername").value;
@@ -39,13 +55,13 @@ window.login = async () => {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     if (!user.emailVerified) {
-      alert("Please verify your email before logging in.");
+      showAlert("Please verify your email before logging in.");
     } else {
-      alert("Login successful!");
+      showAlert("Login successful!");
       loginModal.style.display = "none";
     }
   } catch (err) {
-    alert("Login error: " + err.message);
+    showAlert("Login error: " + err.message);
   }
 };
 
@@ -56,12 +72,27 @@ window.register = async () => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     await sendEmailVerification(user);
-    alert("Registration successful! Verification email sent to " + email);
+    showAlert("Verification email sent to " + email);
     registerModal.style.display = "none";
   } catch (err) {
-    alert("Registration error: " + err.message);
+    showAlert("Registration error: " + err.message);
   }
 };
+
+window.logout = async () => {
+  await signOut(auth);
+  showAlert("Logged out successfully");
+  profileModal.style.display = "none";
+};
+
+onAuthStateChanged(auth, (user) => {
+  const profileEmail = document.getElementById("profileEmail");
+  if (user && user.emailVerified) {
+    profileEmail.innerText = user.email;
+  } else {
+    profileEmail.innerText = "Not logged in";
+  }
+});
 
   </script>
   <style>
@@ -135,6 +166,7 @@ window.register = async () => {
   background: rgba(0,0,0,0.5);
   justify-content: center;
   align-items: center;
+  z-index: 100;
 }
 
 .modal-content {
@@ -177,6 +209,19 @@ window.register = async () => {
   cursor: pointer;
 }
 
+#alertBox {
+  display: none;
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #333;
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 6px;
+  z-index: 200;
+}
+
   </style>
 </head>
 <body>
@@ -186,7 +231,7 @@ window.register = async () => {
     <div class="profile-icon" onclick="showLoginModal()"></div>
   </div>  <div class="main-menu">
     <button class="main-button" onclick="alert('Play clicked')">Play</button>
-  </div>  <!-- Login Modal -->  <div class="modal" id="loginModal">
+  </div>  <!-- Alert Box -->  <div id="alertBox"></div>  <!-- Login Modal -->  <div class="modal" id="loginModal">
     <div class="modal-content">
       <h2>Login</h2>
       <input type="email" placeholder="Email" id="loginUsername">
@@ -201,6 +246,12 @@ window.register = async () => {
       <input type="password" placeholder="Password" id="registerPassword">
       <input type="email" placeholder="Email" id="registerEmail">
       <button onclick="register()">Register</button>
+    </div>
+  </div>  <!-- Profile Modal -->  <div class="modal" id="profileModal">
+    <div class="modal-content">
+      <h2>Profile</h2>
+      <p>Email: <span id="profileEmail"></span></p>
+      <button onclick="logout()">Logout</button>
     </div>
   </div>
 </body>
