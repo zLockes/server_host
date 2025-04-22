@@ -176,7 +176,7 @@
     </div>
   </div>
 
-  <script type="module">
+ <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
   import {
     getAuth,
@@ -195,26 +195,28 @@
     deleteDoc
   } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 
+  const firebaseConfig = {
+    apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
+    authDomain: "kbbig-s.firebaseapp.com",
+    projectId: "kbbig-s",
+    storageBucket: "kbbig-s.appspot.com",
+    messagingSenderId: "616380393795",
+    appId: "1:616380393795:web:f95558aadf8b4c520327f6"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
   document.addEventListener("DOMContentLoaded", () => {
-    const firebaseConfig = {
-      apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
-      authDomain: "kbbig-s.firebaseapp.com",
-      projectId: "kbbig-s",
-      storageBucket: "kbbig-s.appspot.com",
-      messagingSenderId: "616380393795",
-      appId: "1:616380393795:web:f95558aadf8b4c520327f6"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-
+    const loadingScreen = document.getElementById("loadingScreen");
+    const profileIcon = document.getElementById("profileIcon");
     const loginModal = document.getElementById("loginModal");
     const registerModal = document.getElementById("registerModal");
+
     const closeLogin = document.getElementById("closeLogin");
     const closeRegister = document.getElementById("closeRegister");
     const toRegister = document.getElementById("toRegister");
-    const profileIcon = document.getElementById("profileIcon");
 
     closeLogin.onclick = () => loginModal.style.display = "none";
     closeRegister.onclick = () => registerModal.style.display = "none";
@@ -223,32 +225,30 @@
       registerModal.style.display = "block";
     };
 
+    // Wait until Firebase Auth is fully ready
     onAuthStateChanged(auth, async (user) => {
-      document.getElementById("loadingScreen").style.display = "none";
+      loadingScreen.style.display = "none";
 
       if (user && user.emailVerified) {
-        const docRef = doc(db, "users", user.uid);
-        const snap = await getDoc(docRef);
+        const snap = await getDoc(doc(db, "users", user.uid));
+        const data = snap.exists() ? snap.data() : { id: "000000", nickname: "" };
 
-        if (snap.exists()) {
-          const data = snap.data();
-          document.getElementById("nickname").textContent = data.nickname || `player_${data.id}`;
-          document.getElementById("userID").textContent = data.id;
+        document.getElementById("nickname").textContent = data.nickname || `player_${data.id}`;
+        document.getElementById("userID").textContent = data.id;
+        document.getElementById("mainMenu").style.display = "flex";
+        document.getElementById("profilePage").style.display = "none";
 
-          document.getElementById("mainMenu").style.display = "flex";
-          document.getElementById("profilePage").style.display = "none";
-
-          profileIcon.onclick = () => {
-            document.getElementById("mainMenu").style.display = "none";
-            document.getElementById("profilePage").style.display = "flex";
-          };
-        }
+        profileIcon.onclick = () => {
+          document.getElementById("mainMenu").style.display = "none";
+          document.getElementById("profilePage").style.display = "flex";
+        };
       } else {
+        document.getElementById("mainMenu").style.display = "flex";
+        document.getElementById("profilePage").style.display = "none";
+
         profileIcon.onclick = () => {
           loginModal.style.display = "block";
         };
-        document.getElementById("mainMenu").style.display = "flex";
-        document.getElementById("profilePage").style.display = "none";
       }
     });
 
