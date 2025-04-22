@@ -15,6 +15,7 @@ body {
   top: 0;
   width: 100%;
   z-index: 1000;
+  box-sizing: border-box;
 }
 
 .logo {
@@ -26,6 +27,8 @@ body {
   height: 32px;
   cursor: pointer;
   border-radius: 50%;
+  object-fit: cover;
+  margin-left: auto; /* Push it to the right */
 }
 
 .page {
