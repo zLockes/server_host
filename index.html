@@ -137,21 +137,17 @@
 </head>
 <body>
 
-  <!-- Loading Screen -->
   <div id="loadingScreen"><h2>Loading...</h2></div>
 
-  <!-- Navbar -->
   <div id="navbar">
     <div><strong>Game</strong></div>
-    <div class="profile-icon"></div>
+    <div class="profile-icon" id="profileIcon"></div>
   </div>
 
-  <!-- Main Menu -->
   <div id="mainMenu">
     <button onclick="startGame()">Play</button>
   </div>
 
-  <!-- Profile Page -->
   <div id="profilePage">
     <img id="profilePic" src="" alt="Profile" width="80" height="80" style="border-radius: 50%; background: #555;" />
     <h2 id="nickname">Loading...</h2>
@@ -159,30 +155,27 @@
     <button onclick="deleteAccount()" style="background: crimson;">Delete Account</button>
   </div>
 
-  <!-- Login Modal -->
   <div id="loginModal" class="modal">
     <div class="modal-content">
-      <span class="close" onclick="closeLoginModal()">&times;</span>
+      <span class="close" id="closeLogin">&times;</span>
       <h3>Login</h3>
-      <input type="email" id="loginEmail" placeholder="Email" required>
-      <input type="password" id="loginPassword" placeholder="Password" required>
+      <input type="email" id="loginEmail" placeholder="Email">
+      <input type="password" id="loginPassword" placeholder="Password">
       <button onclick="login()">Login</button>
-      <p>No Account Yet? <a onclick="switchToRegister()">Register here!</a></p>
+      <p>No Account Yet? <a id="toRegister">Register here!</a></p>
     </div>
   </div>
 
-  <!-- Register Modal -->
   <div id="registerModal" class="modal">
     <div class="modal-content">
-      <span class="close" onclick="closeRegisterModal()">&times;</span>
+      <span class="close" id="closeRegister">&times;</span>
       <h3>Register</h3>
-      <input type="email" id="registerEmail" placeholder="Email" required>
-      <input type="password" id="registerPassword" placeholder="Password" required>
+      <input type="email" id="registerEmail" placeholder="Email">
+      <input type="password" id="registerPassword" placeholder="Password">
       <button onclick="register()">Register</button>
     </div>
   </div>
 
-  <!-- Firebase + App Script -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
     import {
@@ -208,18 +201,30 @@
       projectId: "kbbig-s",
       storageBucket: "kbbig-s.appspot.com",
       messagingSenderId: "616380393795",
-      appId: "1:616380393795:web:f95558aadf8b4c520327f6",
-      measurementId: "G-0X9K79WRLW"
+      appId: "1:616380393795:web:f95558aadf8b4c520327f6"
     };
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
+    const loginModal = document.getElementById("loginModal");
+    const registerModal = document.getElementById("registerModal");
+    const closeLogin = document.getElementById("closeLogin");
+    const closeRegister = document.getElementById("closeRegister");
+    const toRegister = document.getElementById("toRegister");
+    const profileIcon = document.getElementById("profileIcon");
+
+    closeLogin.onclick = () => loginModal.style.display = "none";
+    closeRegister.onclick = () => registerModal.style.display = "none";
+    toRegister.onclick = () => {
+      loginModal.style.display = "none";
+      registerModal.style.display = "block";
+    };
+
     window.onload = () => {
       onAuthStateChanged(auth, async (user) => {
         document.getElementById("loadingScreen").style.display = "none";
-        const profileIcon = document.querySelector(".profile-icon");
 
         if (user && user.emailVerified) {
           const docRef = doc(db, "users", user.uid);
@@ -238,29 +243,12 @@
             };
           }
         } else {
-          profileIcon.onclick = openLoginModal;
-          document.getElementById("profilePage").style.display = "none";
+          profileIcon.onclick = () => loginModal.style.display = "block";
           document.getElementById("mainMenu").style.display = "flex";
+          document.getElementById("profilePage").style.display = "none";
         }
       });
     };
-
-    function openLoginModal() {
-      document.getElementById("loginModal").style.display = "block";
-    }
-
-    function closeLoginModal() {
-      document.getElementById("loginModal").style.display = "none";
-    }
-
-    function switchToRegister() {
-      closeLoginModal();
-      document.getElementById("registerModal").style.display = "block";
-    }
-
-    function closeRegisterModal() {
-      document.getElementById("registerModal").style.display = "none";
-    }
 
     async function login() {
       const email = document.getElementById("loginEmail").value;
@@ -268,13 +256,13 @@
       try {
         const result = await signInWithEmailAndPassword(auth, email, password);
         if (!result.user.emailVerified) {
-          alert("Please verify your email before logging in.");
+          alert("Please verify your email.");
           await signOut(auth);
         } else {
-          closeLoginModal();
+          loginModal.style.display = "none";
         }
       } catch (err) {
-        alert("Login failed: " + err.message);
+        alert("Login error: " + err.message);
       }
     }
 
@@ -288,36 +276,32 @@
           nickname: "",
           id: Math.floor(100000 + Math.random() * 900000).toString()
         });
-        alert("Account created. Check your email to verify.");
-        closeRegisterModal();
+        alert("Check your email to verify your account.");
+        registerModal.style.display = "none";
         await signOut(auth);
       } catch (err) {
-        alert("Registration failed: " + err.message);
+        alert("Register error: " + err.message);
       }
     }
 
     async function deleteAccount() {
-      if (!confirm("Are you sure you want to delete your account? This cannot be undone.")) return;
-
+      if (!confirm("Delete account permanently?")) return;
       const user = auth.currentUser;
-      if (user) {
-        await deleteDoc(doc(db, "users", user.uid));
-        await deleteUser(user);
-        alert("Account deleted.");
-        location.reload();
-      }
+      await deleteDoc(doc(db, "users", user.uid));
+      await deleteUser(user);
+      alert("Account deleted.");
+      location.reload();
     }
 
     function copyUserID() {
       const id = document.getElementById("userID").textContent;
-      navigator.clipboard.writeText(id).then(() => {
-        alert("User ID copied.");
-      });
+      navigator.clipboard.writeText(id).then(() => alert("User ID copied"));
     }
 
     function startGame() {
       alert("Game starting... (not implemented)");
     }
   </script>
+
 </body>
 </html>
