@@ -2,352 +2,322 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Word Bomb Game</title>
-
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Game Main Menu</title>
   <style>
-    * { box-sizing: border-box; }
     body {
       margin: 0;
-      font-family: sans-serif;
-      background: #1c1c1e;
+      font-family: Arial, sans-serif;
+      background: #1e1e1e;
       color: white;
     }
 
-    .navbar {
+    #navbar {
+      background-color: #2a2a2a;
+      padding: 10px 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: #2c2c2e;
-      padding: 1rem 1.5rem;
     }
-
-    .title { font-size: 1.5rem; }
 
     .profile-icon {
       width: 32px;
       height: 32px;
+      background-color: #444;
       border-radius: 50%;
-      background: white;
       cursor: pointer;
     }
 
-    .menu {
+    #mainMenu {
       display: flex;
-      flex-direction: column;
+      justify-content: center;
       align-items: center;
-      margin-top: 20vh;
+      height: calc(100vh - 50px);
     }
 
-    .menu button {
-      padding: 1rem 2rem;
-      font-size: 1.2rem;
-      background-color: #2c2c2e;
+    #mainMenu button {
+      padding: 12px 24px;
+      font-size: 1.2em;
+      background-color: #3a8ef6;
       color: white;
       border: none;
-      border-radius: 10px;
-      transition: background 0.3s;
+      border-radius: 6px;
+      cursor: pointer;
     }
 
-    .menu button:hover {
-      background-color: #3a3a3c;
+    #profilePage {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
     }
 
-    .modal {
+    #loadingScreen {
       position: fixed;
       top: 0; left: 0;
       width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.7);
-      display: none;
-      justify-content: center;
+      background: #111;
+      color: white;
+      display: flex;
       align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    .copy-icon {
+      cursor: pointer;
+      margin-left: 8px;
+      user-select: none;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 9998;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.6);
     }
 
     .modal-content {
-      background: #2c2c2e;
-      padding: 2rem;
-      border-radius: 8px;
+      background-color: #2a2a2a;
+      margin: 10% auto;
+      padding: 20px;
+      border: 1px solid #888;
       width: 90%;
       max-width: 400px;
+      border-radius: 8px;
       position: relative;
+    }
+
+    .close {
+      color: #aaa;
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
     }
 
     .modal-content input {
       width: 100%;
-      padding: 0.75rem;
-      margin: 0.5rem 0;
+      padding: 10px;
+      margin: 8px 0;
       border: none;
-      border-radius: 6px;
+      border-radius: 4px;
     }
 
     .modal-content button {
       width: 100%;
-      padding: 0.75rem;
-      background: #3a3a3c;
+      padding: 10px;
+      margin-top: 10px;
+      background-color: #3a8ef6;
       color: white;
       border: none;
-      border-radius: 6px;
-      margin-top: 1rem;
-    }
-
-    .modal-content .link {
-      margin-top: 1rem;
-      text-align: center;
-      font-size: 0.9rem;
-      color: #bbb;
-      cursor: pointer;
-    }
-
-    .modal-content .link:hover {
-      text-decoration: underline;
-    }
-
-    .close-btn {
-      position: absolute;
-      top: 10px;
-      right: 15px;
-      cursor: pointer;
-      font-size: 18px;
-      color: #aaa;
-    }
-
-    .close-btn:hover {
-      color: white;
-    }
-
-    .profile-section {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      padding: 2rem;
-      text-align: center;
-    }
-
-    .profile-pic {
-      width: 100px;
-      height: 100px;
-      border-radius: 50%;
-      background: white;
-      margin-bottom: 1rem;
-      cursor: pointer;
-    }
-
-    #nickname[contenteditable] {
-      border-bottom: 1px dashed #555;
-      padding: 2px 4px;
-      display: inline-block;
-      margin-bottom: 10px;
-    }
-
-    #copyBtn {
-      background: #444;
-      border: none;
-      padding: 4px 8px;
-      margin-left: 5px;
-      cursor: pointer;
-      color: white;
       border-radius: 4px;
+      cursor: pointer;
     }
 
-    #logoutBtn {
-      margin-top: 1.5rem;
-      background: #ff3b30;
+    .modal-content p {
+      margin-top: 10px;
+      font-size: 0.9em;
+      text-align: center;
+    }
+
+    .modal-content a {
+      color: #3a8ef6;
+      text-decoration: none;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
+
+  <!-- Loading Screen -->
+  <div id="loadingScreen"><h2>Loading...</h2></div>
+
   <!-- Navbar -->
-  <div class="navbar">
-    <div class="title">Word Bomb</div>
-    <div class="profile-icon" onclick="openLoginModal()"></div>
+  <div id="navbar">
+    <div><strong>Game</strong></div>
+    <div class="profile-icon"></div>
   </div>
 
   <!-- Main Menu -->
-  <div class="menu" id="mainMenu">
-    <button onclick="playGame()">Play</button>
+  <div id="mainMenu">
+    <button onclick="startGame()">Play</button>
+  </div>
+
+  <!-- Profile Page -->
+  <div id="profilePage">
+    <img id="profilePic" src="" alt="Profile" width="80" height="80" style="border-radius: 50%; background: #555;" />
+    <h2 id="nickname">Loading...</h2>
+    <p>ID: <span id="userID">---</span><span class="copy-icon" onclick="copyUserID()">📋</span></p>
+    <button onclick="deleteAccount()" style="background: crimson;">Delete Account</button>
   </div>
 
   <!-- Login Modal -->
-  <div class="modal" id="loginModal">
+  <div id="loginModal" class="modal">
     <div class="modal-content">
-      <span class="close-btn" onclick="closeModal('loginModal')">X</span>
+      <span class="close" onclick="closeLoginModal()">&times;</span>
       <h3>Login</h3>
-      <input type="email" id="loginEmail" placeholder="Email" />
-      <input type="password" id="loginPassword" placeholder="Password" />
-      <button onclick="handleLogin()">Login</button>
-      <div class="link" onclick="switchToRegister()">No account yet? Register here!</div>
+      <input type="email" id="loginEmail" placeholder="Email" required>
+      <input type="password" id="loginPassword" placeholder="Password" required>
+      <button onclick="login()">Login</button>
+      <p>No Account Yet? <a onclick="switchToRegister()">Register here!</a></p>
     </div>
   </div>
 
   <!-- Register Modal -->
-  <div class="modal" id="registerModal">
+  <div id="registerModal" class="modal">
     <div class="modal-content">
-      <span class="close-btn" onclick="closeModal('registerModal')">X</span>
+      <span class="close" onclick="closeRegisterModal()">&times;</span>
       <h3>Register</h3>
-      <input type="email" id="registerEmail" placeholder="Email" />
-      <input type="password" id="registerPassword" placeholder="Password" />
-      <button onclick="handleRegister()">Create Account</button>
-      <div class="link" onclick="switchToLogin()">Already have an account? Login here</div>
+      <input type="email" id="registerEmail" placeholder="Email" required>
+      <input type="password" id="registerPassword" placeholder="Password" required>
+      <button onclick="register()">Register</button>
     </div>
   </div>
 
-  <!-- Profile Page -->
-  <div class="profile-section" id="profilePage">
-    <div class="profile-pic" onclick="alert('Upload pic coming soon')"></div>
-    <div contenteditable="true" id="nickname" onblur="saveNickname()">player_XXXXXX</div>
-    <div>
-      ID: <span id="userID">------</span>
-      <button id="copyBtn" onclick="copyID()">Copy</button>
-    </div>
-    <button id="logoutBtn" onclick="logout()">Logout</button>
-  </div>
+  <!-- Firebase + App Script -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+    import {
+      getAuth,
+      onAuthStateChanged,
+      signInWithEmailAndPassword,
+      createUserWithEmailAndPassword,
+      sendEmailVerification,
+      deleteUser,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+    import {
+      getFirestore,
+      doc,
+      setDoc,
+      getDoc,
+      deleteDoc
+    } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 
-  <!-- Firebase Setup -->
-  <script>
     const firebaseConfig = {
       apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
       authDomain: "kbbig-s.firebaseapp.com",
       projectId: "kbbig-s",
-      storageBucket: "kbbig-s.firebasestorage.app",
+      storageBucket: "kbbig-s.appspot.com",
       messagingSenderId: "616380393795",
       appId: "1:616380393795:web:f95558aadf8b4c520327f6",
       measurementId: "G-0X9K79WRLW"
     };
 
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-  </script>
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
-  <!-- Logic -->
-  <script>
-    function playGame() {
-      alert("Game starts here (to be implemented)");
-    }
+    window.onload = () => {
+      onAuthStateChanged(auth, async (user) => {
+        document.getElementById("loadingScreen").style.display = "none";
+        const profileIcon = document.querySelector(".profile-icon");
+
+        if (user && user.emailVerified) {
+          const docRef = doc(db, "users", user.uid);
+          const snap = await getDoc(docRef);
+
+          if (snap.exists()) {
+            const data = snap.data();
+            document.getElementById("nickname").textContent = data.nickname || `player_${data.id}`;
+            document.getElementById("userID").textContent = data.id;
+            document.getElementById("mainMenu").style.display = "none";
+            document.getElementById("profilePage").style.display = "flex";
+
+            profileIcon.onclick = () => {
+              document.getElementById("mainMenu").style.display = "none";
+              document.getElementById("profilePage").style.display = "flex";
+            };
+          }
+        } else {
+          profileIcon.onclick = openLoginModal;
+          document.getElementById("profilePage").style.display = "none";
+          document.getElementById("mainMenu").style.display = "flex";
+        }
+      });
+    };
 
     function openLoginModal() {
-      if (auth.currentUser) {
-        loadProfilePage();
-      } else {
-        document.getElementById('loginModal').style.display = 'flex';
-      }
+      document.getElementById("loginModal").style.display = "block";
+    }
+
+    function closeLoginModal() {
+      document.getElementById("loginModal").style.display = "none";
     }
 
     function switchToRegister() {
-      closeModal('loginModal');
-      document.getElementById('registerModal').style.display = 'flex';
+      closeLoginModal();
+      document.getElementById("registerModal").style.display = "block";
     }
 
-    function switchToLogin() {
-      closeModal('registerModal');
-      document.getElementById('loginModal').style.display = 'flex';
+    function closeRegisterModal() {
+      document.getElementById("registerModal").style.display = "none";
     }
 
-    function closeModal(id) {
-      document.getElementById(id).style.display = 'none';
+    async function login() {
+      const email = document.getElementById("loginEmail").value;
+      const password = document.getElementById("loginPassword").value;
+      try {
+        const result = await signInWithEmailAndPassword(auth, email, password);
+        if (!result.user.emailVerified) {
+          alert("Please verify your email before logging in.");
+          await signOut(auth);
+        } else {
+          closeLoginModal();
+        }
+      } catch (err) {
+        alert("Login failed: " + err.message);
+      }
     }
 
-    function handleLogin() {
-      const email = document.getElementById('loginEmail').value;
-      const password = document.getElementById('loginPassword').value;
-
-      auth.signInWithEmailAndPassword(email, password)
-        .then(userCred => {
-          const user = userCred.user;
-          if (!user.emailVerified) {
-            alert("Please verify your email before logging in.");
-            auth.signOut();
-            return;
-          }
-          loadProfilePage();
-        })
-        .catch(err => alert("Login failed: " + err.message));
+    async function register() {
+      const email = document.getElementById("registerEmail").value;
+      const password = document.getElementById("registerPassword").value;
+      try {
+        const result = await createUserWithEmailAndPassword(auth, email, password);
+        await sendEmailVerification(result.user);
+        await setDoc(doc(db, "users", result.user.uid), {
+          nickname: "",
+          id: Math.floor(100000 + Math.random() * 900000).toString()
+        });
+        alert("Account created. Check your email to verify.");
+        closeRegisterModal();
+        await signOut(auth);
+      } catch (err) {
+        alert("Registration failed: " + err.message);
+      }
     }
 
-    function handleRegister() {
-      const email = document.getElementById('registerEmail').value;
-      const password = document.getElementById('registerPassword').value;
+    async function deleteAccount() {
+      if (!confirm("Are you sure you want to delete your account? This cannot be undone.")) return;
 
-      auth.createUserWithEmailAndPassword(email, password)
-        .then(async (userCred) => {
-          const user = userCred.user;
-          const userId = Math.floor(100000 + Math.random() * 900000);
-          const nickname = `player_${userId}`;
-
-          await db.collection("users").doc(user.uid).set({
-            email: user.email,
-            nickname: nickname,
-            id: userId
-          });
-
-          user.sendEmailVerification().then(() => {
-            alert("Verification email sent. Please check your inbox.");
-            auth.signOut();
-            closeModal('registerModal');
-          });
-        })
-        .catch(err => alert("Registration failed: " + err.message));
-    }
-
-    function loadProfilePage() {
       const user = auth.currentUser;
-      if (!user) return;
+      if (user) {
+        await deleteDoc(doc(db, "users", user.uid));
+        await deleteUser(user);
+        alert("Account deleted.");
+        location.reload();
+      }
+    }
 
-      db.collection("users").doc(user.uid).get().then(doc => {
-        const data = doc.data();
-        document.getElementById("nickname").textContent = data.nickname;
-        document.getElementById("userID").textContent = data.id;
-        document.getElementById("mainMenu").style.display = "none";
-        document.getElementById("profilePage").style.display = "flex";
-        closeModal('loginModal');
-        closeModal('registerModal');
+    function copyUserID() {
+      const id = document.getElementById("userID").textContent;
+      navigator.clipboard.writeText(id).then(() => {
+        alert("User ID copied.");
       });
     }
 
-    function copyID() {
-      const idText = document.getElementById("userID").textContent;
-      navigator.clipboard.writeText(idText).then(() => {
-        alert("Copied ID: " + idText);
-      });
+    function startGame() {
+      alert("Game starting... (not implemented)");
     }
-
-    function saveNickname() {
-      const newNick = document.getElementById("nickname").textContent.trim();
-      const user = auth.currentUser;
-      if (!user || newNick === "") return;
-
-      db.collection("users").doc(user.uid).update({
-        nickname: newNick
-      }).then(() => {
-        alert("Nickname updated");
-      });
-    }
-
-    function logout() {
-      auth.signOut().then(() => {
-        document.getElementById("profilePage").style.display = "none";
-        document.getElementById("mainMenu").style.display = "flex";
-      });
-    }
-
-    auth.onAuthStateChanged(user => {
-  const profileIcon = document.querySelector(".profile-icon");
-
-  if (user && user.emailVerified) {
-    loadProfilePage();
-
-    // Change profile icon to clickable avatar
-    profileIcon.onclick = () => loadProfilePage();
-  } else {
-    // Reset to login behavior
-    profileIcon.onclick = () => openLoginModal();
-  }
-});
   </script>
 </body>
 </html>
