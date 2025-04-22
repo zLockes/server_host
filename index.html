@@ -3,309 +3,58 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Game Main Menu</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #1e1e1e;
-      color: white;
-    }
-
-    #navbar {
-      background-color: #2a2a2a;
-      padding: 10px 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .profile-icon {
-      width: 32px;
-      height: 32px;
-      background-color: #444;
-      border-radius: 50%;
-      cursor: pointer;
-    }
-
-    #mainMenu {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: calc(100vh - 50px);
-    }
-
-    #mainMenu button {
-      padding: 12px 24px;
-      font-size: 1.2em;
-      background-color: #3a8ef6;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-
-    #profilePage {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      padding: 20px;
-    }
-
-    #loadingScreen {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: #111;
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-    }
-
-    .copy-icon {
-      cursor: pointer;
-      margin-left: 8px;
-      user-select: none;
-    }
-
-    .modal {
-      display: none;
-      position: fixed;
-      z-index: 9998;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      overflow: auto;
-      background-color: rgba(0,0,0,0.6);
-    }
-
-    .modal-content {
-      background-color: #2a2a2a;
-      margin: 10% auto;
-      padding: 20px;
-      border: 1px solid #888;
-      width: 90%;
-      max-width: 400px;
-      border-radius: 8px;
-      position: relative;
-    }
-
-    .close {
-      color: #aaa;
-      position: absolute;
-      top: 10px;
-      right: 15px;
-      font-size: 28px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    .modal-content input {
-      width: 100%;
-      padding: 10px;
-      margin: 8px 0;
-      border: none;
-      border-radius: 4px;
-    }
-
-    .modal-content button {
-      width: 100%;
-      padding: 10px;
-      margin-top: 10px;
-      background-color: #3a8ef6;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    .modal-content p {
-      margin-top: 10px;
-      font-size: 0.9em;
-      text-align: center;
-    }
-
-    .modal-content a {
-      color: #3a8ef6;
-      text-decoration: none;
-      cursor: pointer;
-    }
-  </style>
+  <title>Bomb Party Clone</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-  <div id="loadingScreen"><h2>Loading...</h2></div>
+  <!-- Loading Screen -->
+  <div id="loadingScreen" class="overlay">Loading...</div>
 
+  <!-- Navigation -->
   <div id="navbar">
-    <div><strong>Game</strong></div>
-    <div class="profile-icon" id="profileIcon"></div>
+    <span class="logo">Bomb Clone</span>
+    <img id="profileIcon" src="profile.png" alt="Profile" />
   </div>
 
-  <div id="mainMenu">
+  <!-- Main Menu -->
+  <div id="mainMenu" class="page visible">
     <button onclick="startGame()">Play</button>
   </div>
 
-  <div id="profilePage">
-    <img id="profilePic" src="" alt="Profile" width="80" height="80" style="border-radius: 50%; background: #555;" />
-    <h2 id="nickname">Loading...</h2>
-    <p>ID: <span id="userID">---</span><span class="copy-icon" onclick="copyUserID()">📋</span></p>
-    <button onclick="deleteAccount()" style="background: crimson;">Delete Account</button>
-  </div>
-
+  <!-- Login Modal -->
   <div id="loginModal" class="modal">
     <div class="modal-content">
-      <span class="close" id="closeLogin">&times;</span>
-      <h3>Login</h3>
-      <input type="email" id="loginEmail" placeholder="Email">
-      <input type="password" id="loginPassword" placeholder="Password">
+      <span id="closeLogin" class="close">&times;</span>
+      <h2>Login</h2>
+      <input type="email" id="loginEmail" placeholder="Email" />
+      <input type="password" id="loginPassword" placeholder="Password" />
       <button onclick="login()">Login</button>
-      <p>No Account Yet? <a id="toRegister">Register here!</a></p>
+      <p id="toRegister" class="link">No account? Register here</p>
     </div>
   </div>
 
+  <!-- Register Modal -->
   <div id="registerModal" class="modal">
     <div class="modal-content">
-      <span class="close" id="closeRegister">&times;</span>
-      <h3>Register</h3>
-      <input type="email" id="registerEmail" placeholder="Email">
-      <input type="password" id="registerPassword" placeholder="Password">
+      <span id="closeRegister" class="close">&times;</span>
+      <h2>Register</h2>
+      <input type="email" id="registerEmail" placeholder="Email" />
+      <input type="password" id="registerPassword" placeholder="Password" />
       <button onclick="register()">Register</button>
     </div>
   </div>
 
- <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-  import {
-    getAuth,
-    onAuthStateChanged,
-    signInWithEmailAndPassword,
-    createUserWithEmailAndPassword,
-    sendEmailVerification,
-    deleteUser,
-    signOut
-  } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-  import {
-    getFirestore,
-    doc,
-    setDoc,
-    getDoc,
-    deleteDoc
-  } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+  <!-- Profile Page -->
+  <div id="profilePage" class="page hidden">
+    <img src="default-profile.png" alt="Profile Image" />
+    <h2 id="nickname">Player</h2>
+    <p>ID: <span id="userID">000000</span> <button onclick="copyUserID()">Copy</button></p>
+    <button onclick="deleteAccount()">Delete Account</button>
+    <button onclick="backToMenu()">Back</button>
+  </div>
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
-    authDomain: "kbbig-s.firebaseapp.com",
-    projectId: "kbbig-s",
-    storageBucket: "kbbig-s.appspot.com",
-    messagingSenderId: "616380393795",
-    appId: "1:616380393795:web:f95558aadf8b4c520327f6"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
-
-  document.addEventListener("DOMContentLoaded", () => {
-    const loadingScreen = document.getElementById("loadingScreen");
-    const profileIcon = document.getElementById("profileIcon");
-    const loginModal = document.getElementById("loginModal");
-    const registerModal = document.getElementById("registerModal");
-
-    const closeLogin = document.getElementById("closeLogin");
-    const closeRegister = document.getElementById("closeRegister");
-    const toRegister = document.getElementById("toRegister");
-
-    closeLogin.onclick = () => loginModal.style.display = "none";
-    closeRegister.onclick = () => registerModal.style.display = "none";
-    toRegister.onclick = () => {
-      loginModal.style.display = "none";
-      registerModal.style.display = "block";
-    };
-
-    // Wait until Firebase Auth is fully ready
-    onAuthStateChanged(auth, async (user) => {
-      loadingScreen.style.display = "none";
-
-      if (user && user.emailVerified) {
-        const snap = await getDoc(doc(db, "users", user.uid));
-        const data = snap.exists() ? snap.data() : { id: "000000", nickname: "" };
-
-        document.getElementById("nickname").textContent = data.nickname || `player_${data.id}`;
-        document.getElementById("userID").textContent = data.id;
-        document.getElementById("mainMenu").style.display = "flex";
-        document.getElementById("profilePage").style.display = "none";
-
-        profileIcon.onclick = () => {
-          document.getElementById("mainMenu").style.display = "none";
-          document.getElementById("profilePage").style.display = "flex";
-        };
-      } else {
-        document.getElementById("mainMenu").style.display = "flex";
-        document.getElementById("profilePage").style.display = "none";
-
-        profileIcon.onclick = () => {
-          loginModal.style.display = "block";
-        };
-      }
-    });
-
-    window.login = async function () {
-      const email = document.getElementById("loginEmail").value;
-      const password = document.getElementById("loginPassword").value;
-      try {
-        const result = await signInWithEmailAndPassword(auth, email, password);
-        if (!result.user.emailVerified) {
-          alert("Please verify your email.");
-          await signOut(auth);
-        } else {
-          loginModal.style.display = "none";
-          location.reload();
-        }
-      } catch (err) {
-        alert("Login error: " + err.message);
-      }
-    };
-
-    window.register = async function () {
-      const email = document.getElementById("registerEmail").value;
-      const password = document.getElementById("registerPassword").value;
-      try {
-        const result = await createUserWithEmailAndPassword(auth, email, password);
-        await sendEmailVerification(result.user);
-        await setDoc(doc(db, "users", result.user.uid), {
-          nickname: "",
-          id: Math.floor(100000 + Math.random() * 900000).toString()
-        });
-        alert("Check your email to verify your account.");
-        registerModal.style.display = "none";
-        await signOut(auth);
-      } catch (err) {
-        alert("Register error: " + err.message);
-      }
-    };
-
-    window.deleteAccount = async function () {
-      if (!confirm("Delete account permanently?")) return;
-      const user = auth.currentUser;
-      await deleteDoc(doc(db, "users", user.uid));
-      await deleteUser(user);
-      alert("Account deleted.");
-      location.reload();
-    };
-
-    window.copyUserID = function () {
-      const id = document.getElementById("userID").textContent;
-      navigator.clipboard.writeText(id).then(() => alert("User ID copied"));
-    };
-
-    window.startGame = function () {
-      alert("Game starting... (not implemented)");
-    };
-  });
-</script>
-
+  <!-- Firebase Script -->
+  <script type="module" src="app.js"></script>
 </body>
 </html>
