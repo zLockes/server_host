@@ -3,17 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Word Bomb</title>
+  <title>Word Bomb Game</title>
 
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
-
+    * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: sans-serif;
@@ -29,9 +27,7 @@
       padding: 1rem 1.5rem;
     }
 
-    .navbar .title {
-      font-size: 1.5rem;
-    }
+    .title { font-size: 1.5rem; }
 
     .profile-icon {
       width: 32px;
@@ -78,6 +74,7 @@
       border-radius: 8px;
       width: 90%;
       max-width: 400px;
+      position: relative;
     }
 
     .modal-content input {
@@ -109,6 +106,58 @@
     .modal-content .link:hover {
       text-decoration: underline;
     }
+
+    .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      cursor: pointer;
+      font-size: 18px;
+      color: #aaa;
+    }
+
+    .close-btn:hover {
+      color: white;
+    }
+
+    .profile-section {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    .profile-pic {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: white;
+      margin-bottom: 1rem;
+      cursor: pointer;
+    }
+
+    #nickname[contenteditable] {
+      border-bottom: 1px dashed #555;
+      padding: 2px 4px;
+      display: inline-block;
+      margin-bottom: 10px;
+    }
+
+    #copyBtn {
+      background: #444;
+      border: none;
+      padding: 4px 8px;
+      margin-left: 5px;
+      cursor: pointer;
+      color: white;
+      border-radius: 4px;
+    }
+
+    #logoutBtn {
+      margin-top: 1.5rem;
+      background: #ff3b30;
+    }
   </style>
 </head>
 <body>
@@ -119,13 +168,14 @@
   </div>
 
   <!-- Main Menu -->
-  <div class="menu">
+  <div class="menu" id="mainMenu">
     <button onclick="playGame()">Play</button>
   </div>
 
   <!-- Login Modal -->
   <div class="modal" id="loginModal">
     <div class="modal-content">
+      <span class="close-btn" onclick="closeModal('loginModal')">X</span>
       <h3>Login</h3>
       <input type="email" id="loginEmail" placeholder="Email" />
       <input type="password" id="loginPassword" placeholder="Password" />
@@ -137,12 +187,24 @@
   <!-- Register Modal -->
   <div class="modal" id="registerModal">
     <div class="modal-content">
+      <span class="close-btn" onclick="closeModal('registerModal')">X</span>
       <h3>Register</h3>
       <input type="email" id="registerEmail" placeholder="Email" />
       <input type="password" id="registerPassword" placeholder="Password" />
       <button onclick="handleRegister()">Create Account</button>
       <div class="link" onclick="switchToLogin()">Already have an account? Login here</div>
     </div>
+  </div>
+
+  <!-- Profile Page -->
+  <div class="profile-section" id="profilePage">
+    <div class="profile-pic" onclick="alert('Upload pic coming soon')"></div>
+    <div contenteditable="true" id="nickname" onblur="saveNickname()">player_XXXXXX</div>
+    <div>
+      ID: <span id="userID">------</span>
+      <button id="copyBtn" onclick="copyID()">Copy</button>
+    </div>
+    <button id="logoutBtn" onclick="logout()">Logout</button>
   </div>
 
   <!-- Firebase Setup -->
@@ -156,8 +218,10 @@
       appId: "1:616380393795:web:f95558aadf8b4c520327f6",
       measurementId: "G-0X9K79WRLW"
     };
+
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
+    const db = firebase.firestore();
   </script>
 
   <!-- Logic -->
@@ -167,17 +231,25 @@
     }
 
     function openLoginModal() {
-      document.getElementById('loginModal').style.display = 'flex';
+      if (auth.currentUser) {
+        loadProfilePage();
+      } else {
+        document.getElementById('loginModal').style.display = 'flex';
+      }
     }
 
     function switchToRegister() {
-      document.getElementById('loginModal').style.display = 'none';
+      closeModal('loginModal');
       document.getElementById('registerModal').style.display = 'flex';
     }
 
     function switchToLogin() {
-      document.getElementById('registerModal').style.display = 'none';
+      closeModal('registerModal');
       document.getElementById('loginModal').style.display = 'flex';
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).style.display = 'none';
     }
 
     function handleLogin() {
@@ -192,8 +264,7 @@
             auth.signOut();
             return;
           }
-          alert("Logged in as " + user.email);
-          document.getElementById('loginModal').style.display = 'none';
+          loadProfilePage();
         })
         .catch(err => alert("Login failed: " + err.message));
     }
@@ -203,16 +274,72 @@
       const password = document.getElementById('registerPassword').value;
 
       auth.createUserWithEmailAndPassword(email, password)
-        .then(userCred => {
-          userCred.user.sendEmailVerification()
-            .then(() => {
-              alert("Verification email sent. Please check your inbox.");
-              auth.signOut(); // Force logout until verified
-              document.getElementById('registerModal').style.display = 'none';
-            });
+        .then(async (userCred) => {
+          const user = userCred.user;
+          const userId = Math.floor(100000 + Math.random() * 900000);
+          const nickname = `player_${userId}`;
+
+          await db.collection("users").doc(user.uid).set({
+            email: user.email,
+            nickname: nickname,
+            id: userId
+          });
+
+          user.sendEmailVerification().then(() => {
+            alert("Verification email sent. Please check your inbox.");
+            auth.signOut();
+            closeModal('registerModal');
+          });
         })
         .catch(err => alert("Registration failed: " + err.message));
     }
+
+    function loadProfilePage() {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      db.collection("users").doc(user.uid).get().then(doc => {
+        const data = doc.data();
+        document.getElementById("nickname").textContent = data.nickname;
+        document.getElementById("userID").textContent = data.id;
+        document.getElementById("mainMenu").style.display = "none";
+        document.getElementById("profilePage").style.display = "flex";
+        closeModal('loginModal');
+        closeModal('registerModal');
+      });
+    }
+
+    function copyID() {
+      const idText = document.getElementById("userID").textContent;
+      navigator.clipboard.writeText(idText).then(() => {
+        alert("Copied ID: " + idText);
+      });
+    }
+
+    function saveNickname() {
+      const newNick = document.getElementById("nickname").textContent.trim();
+      const user = auth.currentUser;
+      if (!user || newNick === "") return;
+
+      db.collection("users").doc(user.uid).update({
+        nickname: newNick
+      }).then(() => {
+        alert("Nickname updated");
+      });
+    }
+
+    function logout() {
+      auth.signOut().then(() => {
+        document.getElementById("profilePage").style.display = "none";
+        document.getElementById("mainMenu").style.display = "flex";
+      });
+    }
+
+    auth.onAuthStateChanged(user => {
+      if (user && user.emailVerified) {
+        loadProfilePage();
+      }
+    });
   </script>
 </body>
 </html>
