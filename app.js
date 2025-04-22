@@ -13,6 +13,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+let currentUser = null;
 
 function showElement(id) {
   document.getElementById(id).classList.remove("hidden");
@@ -32,9 +33,8 @@ function copyUserID() {
 }
 
 function deleteAccount() {
-  const user = auth.currentUser;
-  if (user) {
-    deleteUser(user).then(() => {
+  if (currentUser) {
+    deleteUser(currentUser).then(() => {
       alert("Account deleted.");
       location.reload();
     }).catch(err => {
@@ -49,17 +49,19 @@ function backToMenu() {
 }
 
 function showProfile() {
-  const user = auth.currentUser;
-  if (!user) return;
+  if (!currentUser) {
+    alert("Please log in first.");
+    return;
+  }
 
-  const nickname = user.displayName || `player_#${getUserID(user.uid)}`;
-  const userID = `#${getUserID(user.uid)}`;
-  const userEmail = user.email || "unknown@gmail.com";
+  const nickname = currentUser.displayName || `player_#${getUserID(currentUser.uid)}`;
+  const userID = `#${getUserID(currentUser.uid)}`;
+  const userEmail = currentUser.email || "unknown@gmail.com";
 
   document.getElementById("nickname").innerText = nickname;
   document.getElementById("userID").querySelector("span").innerText = userID;
   document.getElementById("userEmail").innerText = `Gmail: ${userEmail}`;
-  document.getElementById("profilePic").src = user.photoURL || "defaulticon.png";
+  document.getElementById("profilePic").src = currentUser.photoURL || "defaulticon.png";
 
   hideElement("mainMenu");
   showElement("profilePage");
@@ -72,19 +74,13 @@ function startGame() {
 document.addEventListener("DOMContentLoaded", () => {
   const profileIcon = document.getElementById("profileIcon");
 
-  // Always attach the click handler
   if (profileIcon) {
     profileIcon.addEventListener("click", () => {
-      const user = auth.currentUser;
-      if (user) showProfile();
-      else alert("Please log in first.");
+      showProfile();
     });
   }
 
-  // Optional: auto-show profile if already logged in
   onAuthStateChanged(auth, (user) => {
-    if (user) {
-      console.log("User is signed in:", user.email);
-    }
+    currentUser = user;
   });
 });
