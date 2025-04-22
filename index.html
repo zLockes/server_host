@@ -1,84 +1,217 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WordBomb Clone</title>
+  <title>Word Bomb</title>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
       font-family: sans-serif;
       background: #1c1c1e;
       color: white;
+    }
+
+    .navbar {
       display: flex;
-      justify-content: center;
+      justify-content: space-between;
       align-items: center;
-      height: 100vh;
+      background: #2c2c2e;
+      padding: 1rem 1.5rem;
+    }
+
+    .navbar .title {
+      font-size: 1.5rem;
+    }
+
+    .profile-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: white;
+      cursor: pointer;
     }
 
     .menu {
-      text-align: center;
-      max-width: 400px;
-      width: 90%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 20vh;
     }
 
-    .title {
-      font-size: 2rem;
-      margin-bottom: 2rem;
-    }
-
-    button {
-      display: block;
-      width: 100%;
-      padding: 1rem;
-      margin: 0.5rem 0;
-      font-size: 1rem;
-      border: none;
-      border-radius: 8px;
+    .menu button {
+      padding: 1rem 2rem;
+      font-size: 1.2rem;
       background-color: #2c2c2e;
       color: white;
+      border: none;
+      border-radius: 10px;
       transition: background 0.3s;
     }
 
-    button:hover {
+    .menu button:hover {
       background-color: #3a3a3c;
     }
 
-    @media (min-width: 600px) {
-      .title {
-        font-size: 2.5rem;
-      }
-      button {
-        font-size: 1.2rem;
-      }
+    .modal {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background: #2c2c2e;
+      padding: 2rem;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 400px;
+    }
+
+    .modal-content input {
+      width: 100%;
+      padding: 0.75rem;
+      margin: 0.5rem 0;
+      border: none;
+      border-radius: 6px;
+    }
+
+    .modal-content button {
+      width: 100%;
+      padding: 0.75rem;
+      background: #3a3a3c;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      margin-top: 1rem;
+    }
+
+    .modal-content .link {
+      margin-top: 1rem;
+      text-align: center;
+      font-size: 0.9rem;
+      color: #bbb;
+      cursor: pointer;
+    }
+
+    .modal-content .link:hover {
+      text-decoration: underline;
     }
   </style>
 </head>
 <body>
-  <div class="menu">
+  <!-- Navbar -->
+  <div class="navbar">
     <div class="title">Word Bomb</div>
-    <button onclick="createGame()">Create Game</button>
-    <button onclick="joinGame()">Join Game</button>
-    <button onclick="login()">Login / Sign Up</button>
+    <div class="profile-icon" onclick="openLoginModal()"></div>
   </div>
 
+  <!-- Main Menu -->
+  <div class="menu">
+    <button onclick="playGame()">Play</button>
+  </div>
+
+  <!-- Login Modal -->
+  <div class="modal" id="loginModal">
+    <div class="modal-content">
+      <h3>Login</h3>
+      <input type="email" id="loginEmail" placeholder="Email" />
+      <input type="password" id="loginPassword" placeholder="Password" />
+      <button onclick="handleLogin()">Login</button>
+      <div class="link" onclick="switchToRegister()">No account yet? Register here!</div>
+    </div>
+  </div>
+
+  <!-- Register Modal -->
+  <div class="modal" id="registerModal">
+    <div class="modal-content">
+      <h3>Register</h3>
+      <input type="email" id="registerEmail" placeholder="Email" />
+      <input type="password" id="registerPassword" placeholder="Password" />
+      <button onclick="handleRegister()">Create Account</button>
+      <div class="link" onclick="switchToLogin()">Already have an account? Login here</div>
+    </div>
+  </div>
+
+  <!-- Firebase Setup -->
   <script>
-    function createGame() {
-      alert("Create Game Clicked");
-      // future: redirect to /create or trigger Firebase logic
+    const firebaseConfig = {
+      apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
+      authDomain: "kbbig-s.firebaseapp.com",
+      projectId: "kbbig-s",
+      storageBucket: "kbbig-s.firebasestorage.app",
+      messagingSenderId: "616380393795",
+      appId: "1:616380393795:web:f95558aadf8b4c520327f6",
+      measurementId: "G-0X9K79WRLW"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+  </script>
+
+  <!-- Logic -->
+  <script>
+    function playGame() {
+      alert("Game starts here (to be implemented)");
     }
 
-    function joinGame() {
-      const code = prompt("Enter Room Code:");
-      if (code) {
-        alert("Joining room: " + code);
-        // future: validate and join room
-      }
+    function openLoginModal() {
+      document.getElementById('loginModal').style.display = 'flex';
     }
 
-    function login() {
-      alert("Login placeholder");
-      // future: show login modal or Firebase Auth
+    function switchToRegister() {
+      document.getElementById('loginModal').style.display = 'none';
+      document.getElementById('registerModal').style.display = 'flex';
+    }
+
+    function switchToLogin() {
+      document.getElementById('registerModal').style.display = 'none';
+      document.getElementById('loginModal').style.display = 'flex';
+    }
+
+    function handleLogin() {
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+
+      auth.signInWithEmailAndPassword(email, password)
+        .then(userCred => {
+          const user = userCred.user;
+          if (!user.emailVerified) {
+            alert("Please verify your email before logging in.");
+            auth.signOut();
+            return;
+          }
+          alert("Logged in as " + user.email);
+          document.getElementById('loginModal').style.display = 'none';
+        })
+        .catch(err => alert("Login failed: " + err.message));
+    }
+
+    function handleRegister() {
+      const email = document.getElementById('registerEmail').value;
+      const password = document.getElementById('registerPassword').value;
+
+      auth.createUserWithEmailAndPassword(email, password)
+        .then(userCred => {
+          userCred.user.sendEmailVerification()
+            .then(() => {
+              alert("Verification email sent. Please check your inbox.");
+              auth.signOut(); // Force logout until verified
+              document.getElementById('registerModal').style.display = 'none';
+            });
+        })
+        .catch(err => alert("Registration failed: " + err.message));
     }
   </script>
 </body>
