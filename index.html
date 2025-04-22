@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,146 +8,141 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
     import { getAuth, createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
     import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-storage.js";
-    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";const firebaseConfig = {
-  apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
-  authDomain: "kbbig-s.firebaseapp.com",
-  projectId: "kbbig-s",
-  storageBucket: "kbbig-s.appspot.com",
-  messagingSenderId: "616380393795",
-  appId: "1:616380393795:web:f95558aadf8b4c520327f6",
-  measurementId: "G-0X9K79WRLW"
-};
+    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const storage = getStorage(app);
-const db = getFirestore(app);
+    const firebaseConfig = {
+      apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
+      authDomain: "kbbig-s.firebaseapp.com",
+      projectId: "kbbig-s",
+      storageBucket: "kbbig-s.appspot.com",
+      messagingSenderId: "616380393795",
+      appId: "1:616380393795:web:f95558aadf8b4c520327f6",
+      measurementId: "G-0X9K79WRLW"
+    };
 
-const loginModal = document.getElementById("loginModal");
-const registerModal = document.getElementById("registerModal");
-const profileModal = document.getElementById("profileModal");
-const alertBox = document.getElementById("alertBox");
-const profileEmail = document.getElementById("profileEmail");
-const profileID = document.getElementById("profileID");
-const profileIcon = document.querySelector(".profile-icon");
-const nicknameInput = document.getElementById("nicknameInput");
-const imageInput = document.getElementById("imageInput");
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const storage = getStorage(app);
+    const db = getFirestore(app);
 
-async function updateUserProfile(uid, data) {
-  await setDoc(doc(db, "users", uid), data, { merge: true });
-}
+    const loginModal = document.getElementById("loginModal");
+    const registerModal = document.getElementById("registerModal");
+    const profileModal = document.getElementById("profileModal");
+    const alertBox = document.getElementById("alertBox");
+    const profileEmail = document.getElementById("profileEmail");
+    const profileID = document.getElementById("profileID");
+    const profileIcon = document.querySelector(".profile-icon");
+    const nicknameInput = document.getElementById("nicknameInput");
+    const imageInput = document.getElementById("imageInput");
 
-window.showLoginModal = () => {
-  if (auth.currentUser && auth.currentUser.emailVerified) {
-    profileModal.style.display = 'flex';
-  } else {
-    loginModal.style.display = 'flex';
-  }
-};
-
-window.showRegisterModal = () => {
-  loginModal.style.display = 'none';
-  registerModal.style.display = 'flex';
-};
-
-window.onclick = function(event) {
-  if (event.target === loginModal) loginModal.style.display = "none";
-  if (event.target === registerModal) registerModal.style.display = "none";
-  if (event.target === profileModal) profileModal.style.display = "none";
-}
-
-const showAlert = (message) => {
-  alertBox.innerText = message;
-  alertBox.style.display = 'block';
-  setTimeout(() => alertBox.style.display = 'none', 3000);
-};
-
-window.login = async () => {
-  const email = document.getElementById("loginUsername").value;
-  const password = document.getElementById("loginPassword").value;
-  try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-    if (!user.emailVerified) {
-      showAlert("Please verify your email before logging in.");
-    } else {
-      showAlert("Login successful!");
-      loginModal.style.display = "none";
+    function showAlert(message) {
+      alertBox.innerText = message;
+      alertBox.style.display = 'block';
+      setTimeout(() => alertBox.style.display = 'none', 3000);
     }
-  } catch (err) {
-    showAlert("Login error: " + err.message);
-  }
-};
 
-window.register = async () => {
-  const email = document.getElementById("registerEmail").value;
-  const password = document.getElementById("registerPassword").value;
-  try {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-    const defaultName = `player_${user.uid.slice(-5)}`;
-    await updateProfile(user, { displayName: defaultName });
-    await updateUserProfile(user.uid, {
-      uid: user.uid,
-      nickname: defaultName,
-      email: user.email,
-      avatar: null
+    async function saveUserDataToFirestore(user) {
+      await setDoc(doc(db, 'users', user.uid), {
+        uid: user.uid,
+        email: user.email,
+        nickname: user.displayName,
+        avatar: user.photoURL || ''
+      });
+    }
+
+    window.showLoginModal = () => {
+      const user = auth.currentUser;
+      if (user && user.emailVerified) {
+        profileModal.style.display = 'flex';
+      } else {
+        loginModal.style.display = 'flex';
+      }
+    };
+
+    window.showRegisterModal = () => {
+      loginModal.style.display = 'none';
+      registerModal.style.display = 'flex';
+    };
+
+    window.login = async () => {
+      const email = document.getElementById("loginUsername").value;
+      const password = document.getElementById("loginPassword").value;
+      try {
+        const { user } = await signInWithEmailAndPassword(auth, email, password);
+        if (!user.emailVerified) {
+          showAlert("Please verify your email before logging in.");
+        } else {
+          await saveUserDataToFirestore(user);
+          showAlert("Login successful!");
+          loginModal.style.display = 'none';
+        }
+      } catch (err) {
+        showAlert("Login error: " + err.message);
+      }
+    };
+
+    window.register = async () => {
+      const email = document.getElementById("registerEmail").value;
+      const password = document.getElementById("registerPassword").value;
+      try {
+        const { user } = await createUserWithEmailAndPassword(auth, email, password);
+        const defaultName = `player_${user.uid.slice(-5)}`;
+        await updateProfile(user, { displayName: defaultName });
+        await sendEmailVerification(user);
+        await saveUserDataToFirestore(user);
+        showAlert("Verification email sent to " + email);
+        registerModal.style.display = 'none';
+      } catch (err) {
+        showAlert("Registration error: " + err.message);
+      }
+    };
+
+    window.updateNickname = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      const name = nicknameInput.value;
+      await updateProfile(user, { displayName: name });
+      await saveUserDataToFirestore(user);
+      showAlert("Nickname updated!");
+    };
+
+    window.uploadProfileImage = async () => {
+      const user = auth.currentUser;
+      const file = imageInput.files[0];
+      if (!user || !file) return;
+      const ref = storageRef(storage, `avatars/${user.uid}`);
+      await uploadBytes(ref, file);
+      const url = await getDownloadURL(ref);
+      await updateProfile(user, { photoURL: url });
+      await saveUserDataToFirestore(user);
+      profileIcon.style.backgroundImage = `url('${url}')`;
+      showAlert("Profile image updated!");
+    };
+
+    window.logout = async () => {
+      await signOut(auth);
+      showAlert("Logged out successfully");
+      profileModal.style.display = 'none';
+    };
+
+    onAuthStateChanged(auth, (user) => {
+      if (user && user.emailVerified) {
+        const id = user.uid.slice(-5);
+        profileEmail.innerText = user.email;
+        profileID.innerText = `#${id}`;
+        nicknameInput.value = user.displayName || `player_${id}`;
+        profileIcon.style.backgroundImage = `url('${user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || 'U'}&background=random`}')`;
+      } else {
+        profileEmail.innerText = "Not logged in";
+        profileID.innerText = "";
+        profileIcon.style.backgroundImage = '';
+      }
     });
-    await sendEmailVerification(user);
-    showAlert("Verification email sent to " + email);
-    registerModal.style.display = "none";
-  } catch (err) {
-    showAlert("Registration error: " + err.message);
-  }
-};
-
-window.logout = async () => {
-  await signOut(auth);
-  showAlert("Logged out successfully");
-  profileModal.style.display = "none";
-};
-
-window.updateNickname = async () => {
-  const user = auth.currentUser;
-  if (user) {
-    await updateProfile(user, { displayName: nicknameInput.value });
-    await updateUserProfile(user.uid, { nickname: nicknameInput.value });
-    showAlert("Nickname updated!");
-  }
-};
-
-window.uploadProfileImage = async () => {
-  const user = auth.currentUser;
-  const file = imageInput.files[0];
-  if (user && file) {
-    const refPath = storageRef(storage, `avatars/${user.uid}`);
-    await uploadBytes(refPath, file);
-    const url = await getDownloadURL(refPath);
-    await updateProfile(user, { photoURL: url });
-    await updateUserProfile(user.uid, { avatar: url });
-    profileIcon.style.backgroundImage = `url('${url}')`;
-    showAlert("Profile picture updated!");
-  }
-};
-
-onAuthStateChanged(auth, (user) => {
-  if (user && user.emailVerified) {
-    const uid5 = user.uid.slice(-5);
-    profileEmail.innerText = user.email;
-    profileID.innerText = `#${uid5}`;
-    nicknameInput.value = user.displayName || `player_${uid5}`;
-    profileIcon.style.backgroundImage = `url('${user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || 'U'}&background=random`}')`;
-    profileIcon.style.backgroundSize = 'cover';
-  } else {
-    profileEmail.innerText = "Not logged in";
-    profileID.innerText = "";
-    profileIcon.style.backgroundImage = '';
-  }
-});
-
   </script>
 </head>
 <body>
-<!-- Body remains same -->
+  <!-- UI HTML remains unchanged and must match JS references -->
+  <!-- Ensure all required elements like profileEmail, nicknameInput, imageInput, etc. exist in your HTML -->
 </body>
 </html>
+ cp
