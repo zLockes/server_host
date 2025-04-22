@@ -177,24 +177,25 @@
   </div>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import {
-      getAuth,
-      onAuthStateChanged,
-      signInWithEmailAndPassword,
-      createUserWithEmailAndPassword,
-      sendEmailVerification,
-      deleteUser,
-      signOut
-    } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-    import {
-      getFirestore,
-      doc,
-      setDoc,
-      getDoc,
-      deleteDoc
-    } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+  import {
+    getAuth,
+    onAuthStateChanged,
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    sendEmailVerification,
+    deleteUser,
+    signOut
+  } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+  import {
+    getFirestore,
+    doc,
+    setDoc,
+    getDoc,
+    deleteDoc
+  } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 
+  document.addEventListener("DOMContentLoaded", () => {
     const firebaseConfig = {
       apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
       authDomain: "kbbig-s.firebaseapp.com",
@@ -222,38 +223,36 @@
       registerModal.style.display = "block";
     };
 
-    window.onload = () => {
-      onAuthStateChanged(auth, async (user) => {
-        document.getElementById("loadingScreen").style.display = "none";
+    onAuthStateChanged(auth, async (user) => {
+      document.getElementById("loadingScreen").style.display = "none";
 
-        if (user && user.emailVerified) {
-          const docRef = doc(db, "users", user.uid);
-          const snap = await getDoc(docRef);
+      if (user && user.emailVerified) {
+        const docRef = doc(db, "users", user.uid);
+        const snap = await getDoc(docRef);
 
-          if (snap.exists()) {
-            const data = snap.data();
-            document.getElementById("nickname").textContent = data.nickname || `player_${data.id}`;
-            document.getElementById("userID").textContent = data.id;
+        if (snap.exists()) {
+          const data = snap.data();
+          document.getElementById("nickname").textContent = data.nickname || `player_${data.id}`;
+          document.getElementById("userID").textContent = data.id;
 
-            document.getElementById("mainMenu").style.display = "flex";
-            document.getElementById("profilePage").style.display = "none";
-
-            profileIcon.addEventListener("click", () => {
-              document.getElementById("mainMenu").style.display = "none";
-              document.getElementById("profilePage").style.display = "flex";
-            }, { once: true });
-          }
-        } else {
-          profileIcon.addEventListener("click", () => {
-            loginModal.style.display = "block";
-          });
           document.getElementById("mainMenu").style.display = "flex";
           document.getElementById("profilePage").style.display = "none";
-        }
-      });
-    };
 
-    async function login() {
+          profileIcon.onclick = () => {
+            document.getElementById("mainMenu").style.display = "none";
+            document.getElementById("profilePage").style.display = "flex";
+          };
+        }
+      } else {
+        profileIcon.onclick = () => {
+          loginModal.style.display = "block";
+        };
+        document.getElementById("mainMenu").style.display = "flex";
+        document.getElementById("profilePage").style.display = "none";
+      }
+    });
+
+    window.login = async function () {
       const email = document.getElementById("loginEmail").value;
       const password = document.getElementById("loginPassword").value;
       try {
@@ -268,9 +267,9 @@
       } catch (err) {
         alert("Login error: " + err.message);
       }
-    }
+    };
 
-    async function register() {
+    window.register = async function () {
       const email = document.getElementById("registerEmail").value;
       const password = document.getElementById("registerPassword").value;
       try {
@@ -286,26 +285,27 @@
       } catch (err) {
         alert("Register error: " + err.message);
       }
-    }
+    };
 
-    async function deleteAccount() {
+    window.deleteAccount = async function () {
       if (!confirm("Delete account permanently?")) return;
       const user = auth.currentUser;
       await deleteDoc(doc(db, "users", user.uid));
       await deleteUser(user);
       alert("Account deleted.");
       location.reload();
-    }
+    };
 
-    function copyUserID() {
+    window.copyUserID = function () {
       const id = document.getElementById("userID").textContent;
       navigator.clipboard.writeText(id).then(() => alert("User ID copied"));
-    }
+    };
 
-    function startGame() {
+    window.startGame = function () {
       alert("Game starting... (not implemented)");
-    }
-  </script>
+    };
+  });
+</script>
 
 </body>
 </html>
