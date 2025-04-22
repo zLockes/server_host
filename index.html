@@ -336,10 +336,18 @@
     }
 
     auth.onAuthStateChanged(user => {
-      if (user && user.emailVerified) {
-        loadProfilePage();
-      }
-    });
+  const profileIcon = document.querySelector(".profile-icon");
+
+  if (user && user.emailVerified) {
+    loadProfilePage();
+
+    // Change profile icon to clickable avatar
+    profileIcon.onclick = () => loadProfilePage();
+  } else {
+    // Reset to login behavior
+    profileIcon.onclick = () => openLoginModal();
+  }
+});
   </script>
 </body>
 </html>
