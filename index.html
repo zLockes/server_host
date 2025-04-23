@@ -5,12 +5,21 @@
   <title>Bomb Party Clone</title>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-  <script src="fire.js"></script>
-  <script src="main.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
+      authDomain: "kbbig-s.firebaseapp.com",
+      databaseURL: "https://kbbig-s-default-rtdb.asia-southeast1.firebasedatabase.app/",
+      projectId: "kbbig-s",
+      storageBucket: "kbbig-s.appspot.com",
+      messagingSenderId: "616380393795",
+      appId: "1:616380393795:web:f95558aadf8b4c520327f6",
+      measurementId: "G-0X9K79WRLW"
+    };
+    firebase.initializeApp(firebaseConfig);
+  </script>
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
     body {
       margin: 0;
       padding: 0;
@@ -64,23 +73,141 @@
 </head>
 <body>
   <div class="container">
-    <h1>Bomb Party</h1><div id="menu">
-  <input type="text" id="playerName" placeholder="Enter your name" />
-  <button onclick="createRoom()">Create Room</button>
-  <input type="text" id="roomCode" placeholder="Room code" />
-  <button onclick="joinRoom()">Join Room</button>
-</div>
+    <h1>Bomb Party</h1>
+    <div id="menu">
+      <input type="text" id="playerName" placeholder="Enter your name" />
+      <button onclick="createRoom()">Create Room</button>
+      <input type="text" id="roomCode" placeholder="Room code" />
+      <button onclick="joinRoom()">Join Room</button>
+    </div>
+    <div id="game" class="hidden">
+      <h2 id="roomInfo"></h2>
+      <h3>Turn: <span id="currentTurn"></span></h3>
+      <h3>Fragment: <span id="fragment"></span></h3>
+      <h3>Time Left: <span id="timeLeft">10</span>s</h3>
+      <input type="text" id="wordInput" placeholder="Type word" />
+      <button onclick="submitWord()">Submit</button>
+      <button onclick="manualNextFragment()">Next Fragment</button>
+    </div>
+  </div>  <script>
+    const playerNameInput = document.getElementById("playerName");
+    const roomCodeInput = document.getElementById("roomCode");
+    const menu = document.getElementById("menu");
+    const game = document.getElementById("game");
+    const currentTurn = document.getElementById("currentTurn");
+    const fragmentSpan = document.getElementById("fragment");
+    const roomInfo = document.getElementById("roomInfo");
+    const wordInput = document.getElementById("wordInput");
+    const timeLeft = document.getElementById("timeLeft");
 
-<div id="game" class="hidden">
-  <h2 id="roomInfo"></h2>
-  <h3>Turn: <span id="currentTurn"></span></h3>
-  <h3>Fragment: <span id="fragment"></span></h3>
-  <h3>Time Left: <span id="timeLeft">10</span>s</h3>
-  <input type="text" id="wordInput" placeholder="Type word" />
-  <button onclick="submitWord()">Submit</button>
-  <button onclick="manualNextFragment()">Next Fragment</button>
-</div>
+    let roomId = "";
+    let playerName = "";
+    let timer = null;
 
-  </div>
-</body>
-</html>
+    function randomFragment() {
+      const cons = "bcdfghjklmnpqrstvwxyz";
+      const vow = "aeiou";
+      const frag = cons[Math.floor(Math.random() * cons.length)] + vow[Math.floor(Math.random() * vow.length)] + (Math.random() > 0.5 ? cons[Math.floor(Math.random() * cons.length)] : "");
+      return frag;
+    }
+
+    window.createRoom = function () {
+      playerName = playerNameInput.value.trim();
+      if (!playerName) return alert("Enter a name");
+
+      roomId = Math.random().toString(36).substring(2, 6).toUpperCase();
+      firebase.database().ref("rooms/" + roomId).set({
+        players: { [playerName]: true },
+        currentTurn: playerName,
+        fragment: randomFragment()
+      }).then(enterGame).catch(console.error);
+    };
+
+    window.joinRoom = function () {
+      playerName = playerNameInput.value.trim();
+      roomId = roomCodeInput.value.trim().toUpperCase();
+      if (!playerName || !roomId) return alert("Enter name and room code");
+
+      const ref = firebase.database().ref("rooms/" + roomId + "/players/");
+      ref.update({ [playerName]: true })
+        .then(enterGame)
+        .catch(err => alert("Room not found or join failed"));
+    };
+
+    function enterGame() {
+      menu.classList.add("hidden");
+      game.classList.remove("hidden");
+      roomInfo.textContent = `Room: ${roomId}`;
+      firebase.database().ref("rooms/" + roomId).on("value", snap => {
+        const data = snap.val();
+        if (!data) return;
+        currentTurn.textContent = data.currentTurn;
+        fragmentSpan.textContent = data.fragment;
+        if (data.currentTurn === playerName) startTimer();
+        else clearTimer();
+      });
+    }
+
+    function startTimer() {
+      clearTimer();
+      let sec = 10;
+      timeLeft.textContent = sec;
+      timer = setInterval(() => {
+        timeLeft.textContent = --sec;
+        if (sec <= 0) {
+          clearTimer();
+          autoPassTurn();
+        }
+      }, 1000);
+    }
+
+    function clearTimer() {
+      clearInterval(timer);
+      timeLeft.textContent = "0";
+    }
+
+    function autoPassTurn() {
+      firebase.database().ref("rooms/" + roomId).once("value").then(snap => {
+        const data = snap.val();
+        const keys = Object.keys(data.players);
+        const i = keys.indexOf(data.currentTurn);
+        const next = keys[(i + 1) % keys.length];
+        firebase.database().ref("rooms/" + roomId).update({
+          currentTurn: next,
+          fragment: randomFragment()
+        });
+      });
+    }
+
+    async function validateWord(word) {
+      try {
+        const res = await fetch(`https://kbbi.raf555.dev/api/v1/entry/${word}`);
+        return res.ok;
+      } catch (e) {
+        console.error(e);
+        return false;
+      }
+    }
+
+    window.submitWord = async function () {
+      const word = wordInput.value.trim().toLowerCase();
+      wordInput.value = "";
+      const snap = await firebase.database().ref("rooms/" + roomId).once("value");
+      const data = snap.val();
+      if (!word.includes(data.fragment)) return alert("Word must include fragment");
+      if (!(await validateWord(word))) return alert("Not a valid word in KBBI");
+
+      const keys = Object.keys(data.players);
+      const i = keys.indexOf(data.currentTurn);
+      const next = keys[(i + 1) % keys.length];
+      firebase.database().ref("rooms/" + roomId).update({
+        currentTurn: next,
+        fragment: randomFragment()
+      });
+    }
+
+    window.manualNextFragment = function () {
+      if (!roomId) return;
+      firebase.database().ref("rooms/" + roomId).update({ fragment: randomFragment() });
+    }
+  </script></html>
