@@ -116,7 +116,7 @@
     <div class="device-id">Your ID: <span id="deviceId"></span></div>
   </div>  <div id="notif" class="notif-popup" style="display: none;"></div>  <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import { getDatabase, ref, set, get, onValue, remove } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+    import { getDatabase, ref, set, get, onValue, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
@@ -174,6 +174,7 @@
       const avatar = await uploadAvatar();
       const roomId = Math.random().toString(36).substring(2, 6).toUpperCase();
       const roomRef = ref(db, `rooms/${roomId}`);
+      const playerRef = ref(db, `rooms/${roomId}/players/${playerName}`);
       const existing = await get(roomRef);
       if (existing.exists()) return alert("Room already exists. Try again.");
 
@@ -185,6 +186,7 @@
         status: "waiting"
       });
 
+      onDisconnect(playerRef).remove();
       localStorage.setItem("roomId", roomId);
       localStorage.setItem("playerName", playerName);
       window.location.href = "lobby.html";
@@ -197,17 +199,19 @@
       const avatar = await uploadAvatar();
 
       const roomRef = ref(db, `rooms/${roomId}`);
+      const playerRef = ref(db, `rooms/${roomId}/players/${playerName}`);
       const snap = await get(roomRef);
       if (!snap.exists()) return alert("Room not found");
 
       const players = snap.val().players || {};
       if (players[playerName]) return alert("Name already taken in this room");
 
-      await set(ref(db, `rooms/${roomId}/players/${playerName}`), {
+      await set(playerRef, {
         avatar,
         lives: 3
       });
 
+      onDisconnect(playerRef).remove();
       localStorage.setItem("roomId", roomId);
       localStorage.setItem("playerName", playerName);
       window.location.href = "lobby.html";
@@ -248,10 +252,12 @@
       const roomSnap = await get(ref(db, `rooms/${room}`));
       if (!roomSnap.exists()) return alert("Room not found");
       const avatar = await uploadAvatar();
-      await set(ref(db, `rooms/${room}/players/${name}`), {
+      const playerRef = ref(db, `rooms/${room}/players/${name}`);
+      await set(playerRef, {
         avatar,
         lives: 3
       });
+      onDisconnect(playerRef).remove();
       localStorage.setItem("roomId", room);
       localStorage.setItem("playerName", name);
       window.location.href = "lobby.html";

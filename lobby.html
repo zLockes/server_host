@@ -86,16 +86,39 @@
     }
     .notif-actions {
       display: flex;
-      gap: 0.5rem;
+      flex-direction: column;
+      gap: 0.25rem;
     }
     .notif-actions button {
-      padding: 0.25rem 0.75rem;
       font-size: 0.75rem;
+      padding: 0.25rem;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .top-left {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      font-size: 1.25rem;
+      cursor: pointer;
+      background: rgba(255,255,255,0.2);
+      padding: 0.25rem 0.75rem;
+      border-radius: 8px;
+    }
+    .hide-id-toggle {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      font-size: 0.75rem;
+      opacity: 0.6;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
   <div class="container">
+    <div class="top-left" onclick="leaveRoom()">&lt;</div>
+    <div class="hide-id-toggle" onclick="toggleRoomDisplay()">Hide ID</div>
     <h1>Lobby</h1>
     <h2>Room: <span id="roomDisplay">-</span></h2>
     <div id="playerList"></div>
@@ -104,7 +127,7 @@
     <div class="invite-box">Your ID: <span id="deviceId"></span></div>
   </div>  <div id="notif" class="notif-popup" style="display: none;"></div>  <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import { getDatabase, ref, onValue, update, set, get, remove } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+    import { getDatabase, ref, onValue, update, set, get, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
@@ -130,9 +153,25 @@
     document.getElementById("deviceId").innerText = deviceId;
 
     const roomRef = ref(db, `rooms/${roomId}`);
+    const playerRef = ref(db, `rooms/${roomId}/players/${playerName}`);
 
     if (!roomId || !playerName) {
       alert("Missing session. Rejoin from main menu.");
+      window.location.href = "index.html";
+    }
+
+    onDisconnect(playerRef).remove();
+
+    let idVisible = true;
+    window.toggleRoomDisplay = () => {
+      idVisible = !idVisible;
+      roomDisplay.innerText = idVisible ? roomId : "-";
+    }
+
+    window.leaveRoom = async () => {
+      await remove(playerRef);
+      localStorage.removeItem("roomId");
+      localStorage.removeItem("playerName");
       window.location.href = "index.html";
     }
 
@@ -206,6 +245,10 @@
         </div>
       `;
       notif.style.display = "flex";
+      setTimeout(() => {
+        notif.style.display = "none";
+        remove(ref(db, `invites/${deviceId}`));
+      }, 10000);
     });
 
     window.declineInvite = async () => {
