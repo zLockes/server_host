@@ -1,22 +1,221 @@
 <!DOCTYPE html><html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bomb Party Clone</title>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
-      authDomain: "kbbig-s.firebaseapp.com",
-      databaseURL: "https://kbbig-s-default-rtdb.asia-southeast1.firebasedatabase.app/",
-      projectId: "kbbig-s",
-      storageBucket: "kbbig-s.appspot.com",
-      messagingSenderId: "616380393795",
-      appId: "1:616380393795:web:f95558aadf8b4c520327f6",
-      measurementId: "G-0X9K79WRLW"
-    };
-    firebase.initializeApp(firebaseConfig);
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+    import { getDatabase, ref, set, update, onValue, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+    import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-storage.js";const firebaseConfig = {
+  apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
+  authDomain: "kbbig-s.firebaseapp.com",
+  databaseURL: "https://kbbig-s-default-rtdb.asia-southeast1.firebasedatabase.app/",
+  projectId: "kbbig-s",
+  storageBucket: "kbbig-s.appspot.com",
+  messagingSenderId: "616380393795",
+  appId: "1:616380393795:web:f95558aadf8b4c520327f6"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const storage = getStorage(app);
+
+const playerNameInput = document.getElementById("playerName");
+const roomCodeInput = document.getElementById("roomCode");
+const profileTextInput = document.getElementById("profileText");
+const profileImageInput = document.getElementById("profileImage");
+const menu = document.getElementById("menu");
+const game = document.getElementById("game");
+const currentTurn = document.getElementById("currentTurn");
+const fragmentSpan = document.getElementById("fragment");
+const roomInfo = document.getElementById("roomInfo");
+const wordInput = document.getElementById("wordInput");
+const timeLeft = document.getElementById("timeLeft");
+const debugWord = document.getElementById("debugWord");
+const playerList = document.getElementById("playerList");
+const modal = document.getElementById("modal");
+const modalContent = document.getElementById("modal-content");
+
+let roomId = "";
+let playerName = "";
+let profileText = "";
+let profileAvatar = "";
+let timer = null;
+let wordList = [];
+let wordSet = new Set();
+
+fetch("kbbi.txt")
+  .then(res => res.text())
+  .then(txt => {
+    wordList = txt.split(/\r?\n/).map(w => w.trim().toLowerCase()).filter(Boolean);
+    wordSet = new Set(wordList);
+  });
+
+function randomFragment() {
+  const word = wordList[Math.floor(Math.random() * wordList.length)];
+  if (!word || word.length < 3) return "de";
+  const start = Math.floor(Math.random() * (word.length - 2));
+  const len = Math.random() < 0.5 ? 2 : 3;
+  const frag = word.substring(start, start + len);
+  debugWord.textContent = `Picked word: ${word}`;
+  return frag;
+}
+
+function showModal(text) {
+  modalContent.textContent = text;
+  modal.style.display = "flex";
+  setTimeout(() => (modal.style.display = "none"), 2000);
+}
+
+async function uploadProfileImage() {
+  const file = profileImageInput.files[0];
+  if (!file) return "";
+  const path = `avatars/${Date.now()}_${file.name}`;
+  const storageRef = sRef(storage, path);
+  await uploadBytes(storageRef, file);
+  return await getDownloadURL(storageRef);
+}
+
+window.createRoom = async function () {
+  playerName = playerNameInput.value.trim();
+  profileText = profileTextInput.value.trim();
+  if (!playerName) return showModal("Enter a name");
+  profileAvatar = await uploadProfileImage();
+  roomId = Math.random().toString(36).substring(2, 6).toUpperCase();
+  await set(ref(db, `rooms/${roomId}`), {
+    players: { [playerName]: { profile: profileText, avatar: profileAvatar } },
+    currentTurn: playerName,
+    fragment: randomFragment()
+  });
+  enterGame();
+};
+
+window.joinRoom = async function () {
+  playerName = playerNameInput.value.trim();
+  profileText = profileTextInput.value.trim();
+  if (!playerName) return showModal("Enter name and room");
+  profileAvatar = await uploadProfileImage();
+  roomId = roomCodeInput.value.trim().toUpperCase();
+  const snap = await get(ref(db, `rooms/${roomId}`));
+  if (!snap.exists()) return showModal("Room does not exist!");
+  await set(ref(db, `rooms/${roomId}/players/${playerName}`), {
+    profile: profileText,
+    avatar: profileAvatar
+  });
+  enterGame();
+};
+
+function enterGame() {
+  menu.classList.add("hidden");
+  game.classList.remove("hidden");
+  roomInfo.textContent = `Room: ${roomId}`;
+  const roomRef = ref(db, `rooms/${roomId}`);
+  onValue(roomRef, snap => {
+    const data = snap.val();
+    if (!data) return;
+    currentTurn.textContent = data.currentTurn;
+    fragmentSpan.textContent = data.fragment;
+    const isMyTurn = data.currentTurn === playerName;
+    wordInput.disabled = !isMyTurn;
+    document.querySelector("button[onclick='submitWord()']").disabled = !isMyTurn;
+
+    const players = data.players || {};
+    playerList.innerHTML = "";
+    Object.entries(players).forEach(([name, info]) => {
+      const wrapper = document.createElement("div");
+      wrapper.style.display = "inline-block";
+      wrapper.style.margin = "6px";
+
+      if (info.avatar) {
+        const img = document.createElement("img");
+        img.src = info.avatar;
+        img.width = 40;
+        img.height = 40;
+        img.style.borderRadius = "50%";
+        wrapper.appendChild(img);
+      } else {
+        const badge = document.createElement("div");
+        badge.textContent = info.profile || name;
+        badge.style.background = "rgba(255,255,255,0.2)";
+        badge.style.padding = "8px";
+        badge.style.borderRadius = "12px";
+        badge.style.textAlign = "center";
+        badge.style.color = "white";
+        wrapper.appendChild(badge);
+      }
+
+      const label = document.createElement("div");
+      label.textContent = name;
+      label.style.fontSize = "0.75rem";
+      label.style.textAlign = "center";
+
+      wrapper.onclick = () => showModal(`${name}'s Profile: ${info.profile || 'None'}`);
+      wrapper.appendChild(label);
+      playerList.appendChild(wrapper);
+    });
+
+    if (isMyTurn) startTimer();
+    else clearTimer();
+  });
+}
+
+function startTimer() {
+  clearTimer();
+  let sec = 10;
+  timeLeft.textContent = sec;
+  timer = setInterval(() => {
+    timeLeft.textContent = --sec;
+    if (sec <= 0) {
+      clearTimer();
+      autoPassTurn();
+    }
+  }, 1000);
+}
+
+function clearTimer() {
+  clearInterval(timer);
+  timeLeft.textContent = "0";
+}
+
+async function autoPassTurn() {
+  const snap = await get(ref(db, `rooms/${roomId}`));
+  const data = snap.val();
+  const keys = Object.keys(data.players);
+  const i = keys.indexOf(data.currentTurn);
+  const next = keys[(i + 1) % keys.length];
+  await update(ref(db, `rooms/${roomId}`), {
+    currentTurn: next,
+    fragment: randomFragment()
+  });
+}
+
+function validateWord(word) {
+  return wordSet.has(word.toLowerCase());
+}
+
+window.submitWord = async function () {
+  const word = wordInput.value.trim().toLowerCase();
+  wordInput.value = "";
+  const snap = await get(ref(db, `rooms/${roomId}`));
+  const data = snap.val();
+  if (!word.includes(data.fragment)) return showModal("Word must include fragment");
+  if (!validateWord(word)) return showModal("Not a valid word");
+  showModal("Valid word accepted!");
+  const keys = Object.keys(data.players);
+  const i = keys.indexOf(data.currentTurn);
+  const next = keys[(i + 1) % keys.length];
+  await update(ref(db, `rooms/${roomId}`), {
+    currentTurn: next,
+    fragment: randomFragment()
+  });
+}
+
+window.manualNextFragment = async function () {
+  await update(ref(db, `rooms/${roomId}`), {
+    fragment: randomFragment()
+  });
+}
+
   </script>
   <style>
     * { box-sizing: border-box; }
@@ -55,8 +254,8 @@
       border-radius: 10px;
       font-size: 1rem;
     }
-    input {
-      background: rgba(255, 255, 255, 0.2);
+    input[type="file"] {
+      background-color: transparent;
       color: white;
     }
     button {
@@ -69,6 +268,25 @@
       background-color: rgba(255, 255, 255, 0.5);
     }
     .hidden { display: none; }
+    #modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    #modal-content {
+      background: white;
+      color: black;
+      padding: 1rem 2rem;
+      border-radius: 12px;
+      font-size: 1.2rem;
+    }
   </style>
 </head>
 <body>
@@ -76,6 +294,8 @@
     <h1>Bomb Party</h1>
     <div id="menu">
       <input type="text" id="playerName" placeholder="Enter your name" />
+      <input type="text" id="profileText" placeholder="Enter profile status" />
+      <input id="profileImage" type="file" accept="image/*" />
       <button onclick="createRoom()">Create Room</button>
       <input type="text" id="roomCode" placeholder="Room code" />
       <button onclick="joinRoom()">Join Room</button>
@@ -88,126 +308,10 @@
       <input type="text" id="wordInput" placeholder="Type word" />
       <button onclick="submitWord()">Submit</button>
       <button onclick="manualNextFragment()">Next Fragment</button>
+      <p id="debugWord" style="font-size: 0.9rem; opacity: 0.6;"></p>
+      <div id="playerList"></div>
     </div>
-  </div>  <script>
-    const playerNameInput = document.getElementById("playerName");
-    const roomCodeInput = document.getElementById("roomCode");
-    const menu = document.getElementById("menu");
-    const game = document.getElementById("game");
-    const currentTurn = document.getElementById("currentTurn");
-    const fragmentSpan = document.getElementById("fragment");
-    const roomInfo = document.getElementById("roomInfo");
-    const wordInput = document.getElementById("wordInput");
-    const timeLeft = document.getElementById("timeLeft");
-
-    let roomId = "";
-    let playerName = "";
-    let timer = null;
-
-    function randomFragment() {
-      const cons = "bcdfghjklmnpqrstvwxyz";
-      const vow = "aeiou";
-      const frag = cons[Math.floor(Math.random() * cons.length)] + vow[Math.floor(Math.random() * vow.length)] + (Math.random() > 0.5 ? cons[Math.floor(Math.random() * cons.length)] : "");
-      return frag;
-    }
-
-    window.createRoom = function () {
-      playerName = playerNameInput.value.trim();
-      if (!playerName) return alert("Enter a name");
-
-      roomId = Math.random().toString(36).substring(2, 6).toUpperCase();
-      firebase.database().ref("rooms/" + roomId).set({
-        players: { [playerName]: true },
-        currentTurn: playerName,
-        fragment: randomFragment()
-      }).then(enterGame).catch(console.error);
-    };
-
-    window.joinRoom = function () {
-      playerName = playerNameInput.value.trim();
-      roomId = roomCodeInput.value.trim().toUpperCase();
-      if (!playerName || !roomId) return alert("Enter name and room code");
-
-      const ref = firebase.database().ref("rooms/" + roomId + "/players/");
-      ref.update({ [playerName]: true })
-        .then(enterGame)
-        .catch(err => alert("Room not found or join failed"));
-    };
-
-    function enterGame() {
-      menu.classList.add("hidden");
-      game.classList.remove("hidden");
-      roomInfo.textContent = `Room: ${roomId}`;
-      firebase.database().ref("rooms/" + roomId).on("value", snap => {
-        const data = snap.val();
-        if (!data) return;
-        currentTurn.textContent = data.currentTurn;
-        fragmentSpan.textContent = data.fragment;
-        if (data.currentTurn === playerName) startTimer();
-        else clearTimer();
-      });
-    }
-
-    function startTimer() {
-      clearTimer();
-      let sec = 10;
-      timeLeft.textContent = sec;
-      timer = setInterval(() => {
-        timeLeft.textContent = --sec;
-        if (sec <= 0) {
-          clearTimer();
-          autoPassTurn();
-        }
-      }, 1000);
-    }
-
-    function clearTimer() {
-      clearInterval(timer);
-      timeLeft.textContent = "0";
-    }
-
-    function autoPassTurn() {
-      firebase.database().ref("rooms/" + roomId).once("value").then(snap => {
-        const data = snap.val();
-        const keys = Object.keys(data.players);
-        const i = keys.indexOf(data.currentTurn);
-        const next = keys[(i + 1) % keys.length];
-        firebase.database().ref("rooms/" + roomId).update({
-          currentTurn: next,
-          fragment: randomFragment()
-        });
-      });
-    }
-
-    async function validateWord(word) {
-      try {
-        const res = await fetch(`https://kbbi.raf555.dev/api/v1/entry/${word}`);
-        return res.ok;
-      } catch (e) {
-        console.error(e);
-        return false;
-      }
-    }
-
-    window.submitWord = async function () {
-      const word = wordInput.value.trim().toLowerCase();
-      wordInput.value = "";
-      const snap = await firebase.database().ref("rooms/" + roomId).once("value");
-      const data = snap.val();
-      if (!word.includes(data.fragment)) return alert("Word must include fragment");
-      if (!(await validateWord(word))) return alert("Not a valid word in KBBI");
-
-      const keys = Object.keys(data.players);
-      const i = keys.indexOf(data.currentTurn);
-      const next = keys[(i + 1) % keys.length];
-      firebase.database().ref("rooms/" + roomId).update({
-        currentTurn: next,
-        fragment: randomFragment()
-      });
-    }
-
-    window.manualNextFragment = function () {
-      if (!roomId) return;
-      firebase.database().ref("rooms/" + roomId).update({ fragment: randomFragment() });
-    }
-  </script></html>
+  </div>
+  <div id="modal"><div id="modal-content"></div></div>
+</body>
+</html>v0000
