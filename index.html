@@ -1,148 +1,190 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html><html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bomb Party</title>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-    import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-storage.js";
-    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bomb Party Clone</title>
+  <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <script defer>
     const firebaseConfig = {
       apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
       authDomain: "kbbig-s.firebaseapp.com",
+      databaseURL: "https://kbbig-s-default-rtdb.asia-southeast1.firebasedatabase.app/",
       projectId: "kbbig-s",
       storageBucket: "kbbig-s.appspot.com",
       messagingSenderId: "616380393795",
       appId: "1:616380393795:web:f95558aadf8b4c520327f6",
       measurementId: "G-0X9K79WRLW"
     };
+    firebase.initializeApp(firebaseConfig);
+  </script>
+  <script defer src="main.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; background: #f2f2f2; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Bomb Party Clone</h1>  <div id="menu">
+    <input type="text" id="playerName" placeholder="Enter your name" />
+    <button onclick="createRoom()">Create Room</button>
+    <input type="text" id="roomCode" placeholder="Room code" />
+    <button onclick="joinRoom()">Join Room</button>
+  </div>  <div id="game" class="hidden">
+    <h2 id="roomInfo"></h2>
+    <h3>Current Turn: <span id="currentTurn"></span></h3>
+    <h3>Fragment: <span id="fragment"></span></h3>
+    <h3>Time Left: <span id="timeLeft">10</span>s</h3>
+    <input type="text" id="wordInput" placeholder="Type word" />
+    <button onclick="submitWord()">Submit</button>
+    <button onclick="manualNextFragment()">Next Fragment</button>
+  </div>  <script>
+    const menu = document.getElementById("menu");
+    const game = document.getElementById("game");
+    const playerNameInput = document.getElementById("playerName");
+    const roomCodeInput = document.getElementById("roomCode");
+    const roomInfo = document.getElementById("roomInfo");
+    const currentTurn = document.getElementById("currentTurn");
+    const fragmentSpan = document.getElementById("fragment");
+    const wordInput = document.getElementById("wordInput");
+    const timeLeft = document.getElementById("timeLeft");
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const storage = getStorage(app);
-    const db = getFirestore(app);
+    let playerName = "";
+    let roomId = "";
+    let timer = null;
 
-    const loginModal = document.getElementById("loginModal");
-    const registerModal = document.getElementById("registerModal");
-    const profileModal = document.getElementById("profileModal");
-    const alertBox = document.getElementById("alertBox");
-    const profileEmail = document.getElementById("profileEmail");
-    const profileID = document.getElementById("profileID");
-    const profileIcon = document.querySelector(".profile-icon");
-    const nicknameInput = document.getElementById("nicknameInput");
-    const imageInput = document.getElementById("imageInput");
-
-    function showAlert(message) {
-      alertBox.innerText = message;
-      alertBox.style.display = 'block';
-      setTimeout(() => alertBox.style.display = 'none', 3000);
+    function randomFragment() {
+      const consonants = "bcdfghjklmnpqrstvwxyz";
+      const vowels = "aeiou";
+      const part1 = consonants[Math.floor(Math.random() * consonants.length)];
+      const part2 = vowels[Math.floor(Math.random() * vowels.length)];
+      const part3 = Math.random() > 0.5 ? consonants[Math.floor(Math.random() * consonants.length)] : "";
+      return part1 + part2 + part3;
     }
 
-    async function saveUserDataToFirestore(user) {
-      await setDoc(doc(db, 'users', user.uid), {
-        uid: user.uid,
-        email: user.email,
-        nickname: user.displayName,
-        avatar: user.photoURL || ''
+    function manualNextFragment() {
+      if (!roomId) return;
+      const newFrag = randomFragment();
+      firebase.database().ref("rooms/" + roomId).update({
+        fragment: newFrag
       });
     }
 
-    window.showLoginModal = () => {
-      const user = auth.currentUser;
-      if (user && user.emailVerified) {
-        profileModal.style.display = 'flex';
-      } else {
-        loginModal.style.display = 'flex';
-      }
-    };
+    function createRoom() {
+      playerName = playerNameInput.value.trim();
+      if (!playerName) return alert("Enter a name");
 
-    window.showRegisterModal = () => {
-      loginModal.style.display = 'none';
-      registerModal.style.display = 'flex';
-    };
+      roomId = Math.random().toString(36).substring(2, 6).toUpperCase();
+      firebase.database().ref("rooms/" + roomId).set({
+        players: {
+          [playerName]: true
+        },
+        currentTurn: playerName,
+        fragment: randomFragment()
+      });
+      enterGame();
+    }
 
-    window.login = async () => {
-      const email = document.getElementById("loginUsername").value;
-      const password = document.getElementById("loginPassword").value;
-      try {
-        const { user } = await signInWithEmailAndPassword(auth, email, password);
-        if (!user.emailVerified) {
-          showAlert("Please verify your email before logging in.");
-        } else {
-          await saveUserDataToFirestore(user);
-          showAlert("Login successful!");
-          loginModal.style.display = 'none';
+    function joinRoom() {
+      playerName = playerNameInput.value.trim();
+      roomId = roomCodeInput.value.trim().toUpperCase();
+      if (!playerName || !roomId) return alert("Enter name and room code");
+
+      const roomRef = firebase.database().ref("rooms/" + roomId + "/players/");
+      roomRef.update({
+        [playerName]: true
+      });
+      enterGame();
+    }
+
+    function enterGame() {
+      menu.classList.add("hidden");
+      game.classList.remove("hidden");
+      roomInfo.textContent = "Room: " + roomId;
+
+      firebase.database().ref("rooms/" + roomId).on("value", (snap) => {
+        const data = snap.val();
+        if (!data) return;
+        currentTurn.textContent = data.currentTurn;
+        fragmentSpan.textContent = data.fragment;
+
+        if (data.currentTurn === playerName) startTimer();
+        else clearTimer();
+      });
+    }
+
+    function startTimer() {
+      clearTimer();
+      let seconds = 10;
+      timeLeft.textContent = seconds;
+
+      timer = setInterval(() => {
+        seconds--;
+        timeLeft.textContent = seconds;
+        if (seconds <= 0) {
+          clearTimer();
+          autoPassTurn();
         }
-      } catch (err) {
-        showAlert("Login error: " + err.message);
-      }
-    };
+      }, 1000);
+    }
 
-    window.register = async () => {
-      const email = document.getElementById("registerEmail").value;
-      const password = document.getElementById("registerPassword").value;
+    function clearTimer() {
+      clearInterval(timer);
+      timeLeft.textContent = "0";
+    }
+
+    function autoPassTurn() {
+      firebase.database().ref("rooms/" + roomId).once("value").then(snap => {
+        const data = snap.val();
+        const playerKeys = Object.keys(data.players);
+        const currentIndex = playerKeys.indexOf(data.currentTurn);
+        const nextIndex = (currentIndex + 1) % playerKeys.length;
+        const nextPlayer = playerKeys[nextIndex];
+        firebase.database().ref("rooms/" + roomId).update({
+          currentTurn: nextPlayer,
+          fragment: randomFragment()
+        });
+      });
+    }
+
+    async function validateWord(word) {
       try {
-        const { user } = await createUserWithEmailAndPassword(auth, email, password);
-        const defaultName = `player_${user.uid.slice(-5)}`;
-        await updateProfile(user, { displayName: defaultName });
-        await sendEmailVerification(user);
-        await saveUserDataToFirestore(user);
-        showAlert("Verification email sent to " + email);
-        registerModal.style.display = 'none';
+        const res = await fetch(`https://kbbi.raf555.dev/api/v1/entry/${word}`);
+        return res.ok;
       } catch (err) {
-        showAlert("Registration error: " + err.message);
+        console.error("Validation error:", err);
+        return false;
       }
-    };
+    }
 
-    window.updateNickname = async () => {
-      const user = auth.currentUser;
-      if (!user) return;
-      const name = nicknameInput.value;
-      await updateProfile(user, { displayName: name });
-      await saveUserDataToFirestore(user);
-      showAlert("Nickname updated!");
-    };
+    async function submitWord() {
+      const word = wordInput.value.trim().toLowerCase();
+      wordInput.value = "";
 
-    window.uploadProfileImage = async () => {
-      const user = auth.currentUser;
-      const file = imageInput.files[0];
-      if (!user || !file) return;
-      const ref = storageRef(storage, `avatars/${user.uid}`);
-      await uploadBytes(ref, file);
-      const url = await getDownloadURL(ref);
-      await updateProfile(user, { photoURL: url });
-      await saveUserDataToFirestore(user);
-      profileIcon.style.backgroundImage = `url('${url}')`;
-      showAlert("Profile image updated!");
-    };
+      const snap = await firebase.database().ref("rooms/" + roomId).once("value");
+      const data = snap.val();
+      const fragment = data.fragment;
 
-    window.logout = async () => {
-      await signOut(auth);
-      showAlert("Logged out successfully");
-      profileModal.style.display = 'none';
-    };
-
-    onAuthStateChanged(auth, (user) => {
-      if (user && user.emailVerified) {
-        const id = user.uid.slice(-5);
-        profileEmail.innerText = user.email;
-        profileID.innerText = `#${id}`;
-        nicknameInput.value = user.displayName || `player_${id}`;
-        profileIcon.style.backgroundImage = `url('${user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || 'U'}&background=random`}')`;
-      } else {
-        profileEmail.innerText = "Not logged in";
-        profileID.innerText = "";
-        profileIcon.style.backgroundImage = '';
+      if (!word.includes(fragment)) {
+        alert("Word must contain the fragment!");
+        return;
       }
-    });
-  </script>
-</head>
-<body>
-  <!-- UI HTML remains unchanged and must match JS references -->
-  <!-- Ensure all required elements like profileEmail, nicknameInput, imageInput, etc. exist in your HTML -->
-</body>
+
+      const isValid = await validateWord(word);
+      if (!isValid) {
+        alert("Not a valid word in KBBI!");
+        return;
+      }
+
+      const playerKeys = Object.keys(data.players);
+      const currentIndex = playerKeys.indexOf(data.currentTurn);
+      const nextIndex = (currentIndex + 1) % playerKeys.length;
+      const nextPlayer = playerKeys[nextIndex];
+
+      firebase.database().ref("rooms/" + roomId).update({
+        currentTurn: nextPlayer,
+        fragment: randomFragment()
+      });
+    }
+  </script></body>
 </html>
- cp
