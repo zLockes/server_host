@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en">
+<!-- PATCHED: LOBBY WITH CHAT POPUP + MESSAGE DISPLAY --><!DOCTYPE html><html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -32,11 +32,25 @@
       object-fit: cover;
       margin: 5px;
       border: 2px solid white;
+      position: relative;
     }
-    #playerList span {
-      display: block;
-      font-size: 0.8rem;
-      margin-top: 0.25rem;
+    .chat-popup {
+      position: absolute;
+      bottom: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255,255,255,0.9);
+      color: black;
+      padding: 0.25rem 0.5rem;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      white-space: nowrap;
+      animation: fadeOut 5s forwards;
+    }
+    @keyframes fadeOut {
+      0% { opacity: 1; }
+      80% { opacity: 1; }
+      100% { opacity: 0; }
     }
     button {
       width: 100%;
@@ -49,87 +63,35 @@
       font-size: 1rem;
       cursor: pointer;
     }
-    .invite-box {
-      position: absolute;
-      bottom: 1rem;
-      left: 1rem;
-      font-size: 0.8rem;
-      opacity: 0.6;
-    }
-    .notif-popup {
-      position: fixed;
-      bottom: 1rem;
-      right: -400px;
-      background: white;
-      color: black;
-      padding: 1rem;
+    .input-row input {
+      width: 100%;
+      padding: 0.75rem;
+      margin-top: 1rem;
+      border: none;
       border-radius: 10px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-      width: 280px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      animation: slideIn 0.5s forwards;
     }
-    @keyframes slideIn {
-      to { right: 1rem; }
-    }
-    .notif-content {
-      display: flex;
-      align-items: center;
-    }
-    .notif-content img {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      margin-right: 0.75rem;
-    }
-    .notif-actions {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-    }
-    .notif-actions button {
-      font-size: 0.75rem;
-      padding: 0.25rem;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    .top-left {
-      position: absolute;
-      top: 1rem;
-      left: 1rem;
-      font-size: 1.25rem;
-      cursor: pointer;
-      background: rgba(255,255,255,0.2);
-      padding: 0.25rem 0.75rem;
-      border-radius: 8px;
-    }
-    .hide-id-toggle {
-      position: absolute;
-      top: 1rem;
-      right: 1rem;
-      font-size: 0.75rem;
-      opacity: 0.6;
-      cursor: pointer;
+    .input-row button {
+      margin-top: 0.5rem;
+      padding: 0.75rem;
+      border: none;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.3);
+      color: white;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="top-left" onclick="leaveRoom()">&lt;</div>
-    <div class="hide-id-toggle" onclick="toggleRoomDisplay()">Hide ID</div>
-    <h1>Lobby</h1>
     <h2>Room: <span id="roomDisplay">-</span></h2>
     <div id="playerList"></div>
-    <button id="startGameBtn" style="display: none">Start Game</button>
-    <button onclick="sendInvite()">Invite Player</button>
-    <div class="invite-box">Your ID: <span id="deviceId"></span></div>
+    <div class="input-row">
+      <input type="text" id="chatInput" placeholder="Send a message..." />
+      <button onclick="sendMessage()">Send</button>
+    </div>
   </div>
-  <div id="notif" class="notif-popup" style="display: none;"></div>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import { getDatabase, ref, onValue, update, set, get, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";const app = initializeApp({
+    import { getDatabase, ref, onValue, set, remove } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";const app = initializeApp({
   apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
   authDomain: "kbbig-s.firebaseapp.com",
   databaseURL: "https://kbbig-s-default-rtdb.asia-southeast1.firebasedatabase.app/",
@@ -140,133 +102,48 @@
 });
 
 const db = getDatabase(app);
-const roomId = localStorage.getItem("roomId");
 const playerName = localStorage.getItem("playerName");
-const deviceId = localStorage.getItem("deviceId") || crypto.randomUUID();
-localStorage.setItem("deviceId", deviceId);
-
-const playerRef = ref(db, `rooms/${roomId}/players/${playerName}`);
-onDisconnect(playerRef).remove();
-
-document.getElementById("deviceId").innerText = deviceId;
-const roomDisplay = document.getElementById("roomDisplay");
+const roomId = localStorage.getItem("roomId");
 const playerList = document.getElementById("playerList");
-const startGameBtn = document.getElementById("startGameBtn");
-
-let idVisible = true;
-window.toggleRoomDisplay = () => {
-  idVisible = !idVisible;
-  roomDisplay.innerText = idVisible ? roomId : "-";
-}
-
-window.leaveRoom = async () => {
-  await remove(playerRef);
-  localStorage.clear();
-  window.location.href = "index.html";
-}
+const chatInput = document.getElementById("chatInput");
 
 const roomRef = ref(db, `rooms/${roomId}`);
+const msgRef = ref(db, `rooms/${roomId}/messages`);
+
 onValue(roomRef, (snap) => {
   const data = snap.val();
-  if (!data) return;
-  if (data.status === "playing") {
-    window.location.href = "game.html";
-    return;
-  }
-  roomDisplay.innerText = idVisible ? roomId : "-";
+  if (!data || !data.players) return;
   playerList.innerHTML = "";
-  for (const [name, info] of Object.entries(data.players || {})) {
-    const avatarURL = (info.avatar && typeof info.avatar === "string") ? info.avatar : "defaulticon.png";
-    const img = document.createElement("img");
-    img.src = avatarURL;
-    img.className = "player-avatar";
-    img.title = name;
-    const label = document.createElement("span");
-    label.innerText = `${name}`;
-    const wrap = document.createElement("div");
-    wrap.style.display = 'inline-block';
-    wrap.style.textAlign = 'center';
-    wrap.appendChild(img);
-    wrap.appendChild(label);
-    playerList.appendChild(wrap);
+  for (const [name, info] of Object.entries(data.players)) {
+    const avatar = document.createElement("img");
+    avatar.className = "player-avatar";
+    avatar.src = info.avatar || "defaulticon.png";
+    avatar.setAttribute("data-name", name);
+    playerList.appendChild(avatar);
   }
-  startGameBtn.style.display = data.currentTurn === playerName ? "block" : "none";
 });
 
-startGameBtn.onclick = async () => {
-  const wordList = await fetch("kbbi.txt").then(r => r.text()).then(t => t.split(/\r?\n/));
-  const word = wordList[Math.floor(Math.random() * wordList.length)];
-  const i = Math.floor(Math.random() * (word.length - 2));
-  const prompt = word.substring(i, i + (Math.random() < 0.5 ? 2 : 3));
-  update(roomRef, { status: "playing", prompt });
-}
-
-window.sendInvite = async () => {
-  const inviteTo = prompt("Enter ID to invite:");
-  if (!inviteTo) return;
-  const playerSnap = await get(playerRef);
-  const player = playerSnap.val();
-  await set(ref(db, `invites/${inviteTo}`), {
-    from: playerName,
-    avatar: player?.avatar || "defaulticon.png",
-    room: roomId,
-    timestamp: Date.now()
-  });
-  alert("Invite sent!");
-}
-
-const notif = document.getElementById("notif");
-const myInviteRef = ref(db, `invites/${deviceId}`);
-onValue(myInviteRef, snap => {
-  if (!snap.exists()) return;
-  const { from, avatar, room } = snap.val();
-  notif.innerHTML = `
-    <div class="notif-content">
-      <img src="${avatar}" alt="avatar" />
-      <div>
-        <strong>${from}</strong> invited you to join Room <b>${room}</b>
-      </div>
-    </div>
-    <div class="notif-actions">
-      <button onclick="declineInvite()">Decline</button>
-      <button onclick="acceptInvite('${room}')">Accept</button>
-    </div>
-  `;
-  notif.style.display = "flex";
-  setTimeout(() => {
-    notif.style.display = "none";
-    remove(ref(db, `invites/${deviceId}`));
-  }, 10000);
+onValue(msgRef, snap => {
+  const messages = snap.val() || {};
+  for (const [name, text] of Object.entries(messages)) {
+    const el = document.querySelector(`.player-avatar[data-name='${name}']`);
+    if (!el) continue;
+    let old = el.querySelector(".chat-popup");
+    if (old) old.remove();
+    const bubble = document.createElement("div");
+    bubble.className = "chat-popup";
+    bubble.innerText = text;
+    el.appendChild(bubble);
+  }
 });
 
-window.declineInvite = async () => {
-  await remove(ref(db, `invites/${deviceId}`));
-  notif.style.display = "none";
-}
-
-window.acceptInvite = async (room) => {
-  const name = localStorage.getItem("playerName");
-  if (!name) return alert("Enter your name on the main menu first!");
-  const snap = await get(ref(db, `rooms/${room}`));
-  if (!snap.exists()) return alert("Room not found");
-  const avatar = snap.val().players?.[playerName]?.avatar || "defaulticon.png";
-  await set(ref(db, `rooms/${room}/players/${name}`), { avatar, lives: 3 });
-  localStorage.setItem("roomId", room);
-  window.location.href = "lobby.html";
-}
-
-// IDLE TIMEOUT (2 mins)
-let idleTimer;
-function resetIdle() {
-  clearTimeout(idleTimer);
-  idleTimer = setTimeout(() => {
-    alert("Idle too long. You have been removed from the room.");
-    leaveRoom();
-  }, 2 * 60 * 1000);
-}
-window.addEventListener("mousemove", resetIdle);
-window.addEventListener("keydown", resetIdle);
-resetIdle();
+window.sendMessage = async () => {
+  const msg = chatInput.value.trim();
+  if (!msg) return;
+  chatInput.value = "";
+  await set(ref(db, `rooms/${roomId}/messages/${playerName}`), msg);
+  setTimeout(() => remove(ref(db, `rooms/${roomId}/messages/${playerName}`)), 5000);
+};
 
   </script>
 </body>

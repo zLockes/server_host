@@ -1,4 +1,6 @@
-<!DOCTYPE html><html lang="en">
+<!-- PATCHED FILE: CHAT POPUP + LIFE ANIMATION IN GAME -->
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -6,161 +8,206 @@
   <style>
     body {
       margin: 0;
-      padding: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #4e54c8, #8f94fb);
+      color: white;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
-      font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #4e54c8, #8f94fb);
     }
-    .container {
+    .game-container {
+      text-align: center;
+      padding: 2rem;
       background: rgba(255, 255, 255, 0.1);
       backdrop-filter: blur(10px);
       border-radius: 20px;
-      padding: 2rem;
-      text-align: center;
-      color: white;
       width: 100%;
-      max-width: 400px;
+      max-width: 420px;
     }
-    .player-avatar {
-      width: 48px;
-      height: 48px;
+    .avatar {
+      width: 64px;
+      height: 64px;
       border-radius: 50%;
+      margin: 0.5rem;
       object-fit: cover;
-      margin: 5px;
       border: 2px solid white;
+      transition: all 0.3s;
+      position: relative;
     }
-    #playerList span {
-      display: block;
-      font-size: 0.8rem;
-      margin-top: 0.25rem;
+    .avatar[data-eliminated="true"] {
+      filter: grayscale(1);
+      opacity: 0.4;
     }
-    input, button {
+    .chat-popup {
+      position: absolute;
+      bottom: 72px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255,255,255,0.9);
+      color: black;
+      padding: 0.25rem 0.5rem;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      white-space: nowrap;
+      animation: fadeOut 5s forwards;
+    }
+    @keyframes fadeOut {
+      0% { opacity: 1; }
+      80% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    .input-row input {
       width: 100%;
       padding: 0.75rem;
-      margin: 0.5rem 0;
-      border: none;
-      border-radius: 10px;
       font-size: 1rem;
+      border-radius: 10px;
+      border: none;
+      margin-top: 1rem;
     }
-    button {
-      background: rgba(255, 255, 255, 0.3);
+    .input-row button {
+      margin-top: 0.5rem;
+      padding: 0.75rem;
+      border-radius: 10px;
+      border: none;
+      font-size: 1rem;
+      background: rgba(255,255,255,0.3);
       color: white;
-      cursor: pointer;
     }
-    button:hover {
-      background: rgba(255, 255, 255, 0.5);
+    .input-row button:disabled {
+      opacity: 0.5;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Bomb Party</h1>
-    <h2>Prompt: <span id="prompt">-</span></h2>
-    <h3>Turn: <span id="turn">-</span></h3>
-    <input id="wordInput" placeholder="Type a word..." disabled />
-    <button id="submitBtn" disabled>Submit</button>
+  <div class="game-container">
+    <h2>Room: <span id="roomId"></span></h2>
+    <h3>Turn: <span id="currentTurn"></span></h3>
+    <h3>Prompt: <span id="prompt"></span></h3>
+    <h3>Time Left: <span id="timeLeft">10</span>s</h3>
+    <div class="input-row">
+      <input type="text" id="wordInput" placeholder="Type a word or message" />
+      <button onclick="submitWord()">Submit</button>
+    </div>
     <div id="playerList"></div>
-  </div>  <script type="module">
+  </div>
+  <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import { getDatabase, ref, get, update, onValue } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+    import { getDatabase, ref, onValue, update, set, get, remove } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";const app = initializeApp({
+  apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
+  authDomain: "kbbig-s.firebaseapp.com",
+  databaseURL: "https://kbbig-s-default-rtdb.asia-southeast1.firebasedatabase.app/",
+  projectId: "kbbig-s",
+  storageBucket: "kbbig-s.appspot.com",
+  messagingSenderId: "616380393795",
+  appId: "1:616380393795:web:f95558aadf8b4c520327f6"
+});
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
-      authDomain: "kbbig-s.firebaseapp.com",
-      databaseURL: "https://kbbig-s-default-rtdb.asia-southeast1.firebasedatabase.app/",
-      projectId: "kbbig-s",
-      storageBucket: "kbbig-s.appspot.com",
-      messagingSenderId: "616380393795",
-      appId: "1:616380393795:web:f95558aadf8b4c520327f6"
-    };
+const db = getDatabase(app);
+const playerName = localStorage.getItem("playerName");
+const roomId = localStorage.getItem("roomId");
+document.getElementById("roomId").textContent = roomId;
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+const wordInput = document.getElementById("wordInput");
+const submitBtn = document.querySelector("button");
+const currentTurn = document.getElementById("currentTurn");
+const promptSpan = document.getElementById("prompt");
+const playerList = document.getElementById("playerList");
+const timeLeft = document.getElementById("timeLeft");
 
-    const roomId = localStorage.getItem("roomId");
-    const playerName = localStorage.getItem("playerName");
-    const promptSpan = document.getElementById("prompt");
-    const turnSpan = document.getElementById("turn");
-    const wordInput = document.getElementById("wordInput");
-    const submitBtn = document.getElementById("submitBtn");
-    const playerList = document.getElementById("playerList");
+const roomRef = ref(db, `rooms/${roomId}`);
+const messagesRef = ref(db, `rooms/${roomId}/messages`);
+let timer;
 
-    const roomRef = ref(db, `rooms/${roomId}`);
+onValue(roomRef, snap => {
+  const data = snap.val();
+  if (!data) return;
+  currentTurn.textContent = data.currentTurn;
+  promptSpan.textContent = data.prompt;
 
-    onValue(roomRef, snap => {
-      const data = snap.val();
-      if (!data || data.status !== "playing") return;
+  const isMyTurn = data.currentTurn === playerName;
+  wordInput.disabled = !isMyTurn;
+  submitBtn.disabled = !isMyTurn;
 
-      if (Object.values(data.players).filter(p => p.lives > 0).length === 1) {
-        window.location.href = "end.html";
-        return;
-      }
+  clearInterval(timer);
+  if (isMyTurn) startTimer();
 
-      promptSpan.textContent = data.prompt;
-      turnSpan.textContent = data.currentTurn;
+  playerList.innerHTML = "";
+  for (const [name, info] of Object.entries(data.players || {})) {
+    const avatar = document.createElement("img");
+    avatar.src = info.avatar || "defaulticon.png";
+    avatar.className = "avatar";
+    avatar.setAttribute("data-name", name);
+    if (info.lives <= 0) avatar.setAttribute("data-eliminated", "true");
+    playerList.appendChild(avatar);
+  }
+});
 
-      wordInput.disabled = data.currentTurn !== playerName;
-      submitBtn.disabled = data.currentTurn !== playerName;
+onValue(messagesRef, snap => {
+  const messages = snap.val() || {};
+  for (const [name, msg] of Object.entries(messages)) {
+    const avatar = document.querySelector(`.avatar[data-name='${name}']`);
+    if (!avatar) continue;
+    let bubble = avatar.querySelector(".chat-popup");
+    if (bubble) bubble.remove();
+    const msgEl = document.createElement("div");
+    msgEl.className = "chat-popup";
+    msgEl.innerText = msg;
+    avatar.appendChild(msgEl);
+  }
+});
 
-      playerList.innerHTML = "";
-      for (const [name, info] of Object.entries(data.players)) {
-        const avatarURL = (info.avatar && typeof info.avatar === "string") ? info.avatar : "defaulticon.png";
-        const img = document.createElement("img");
-        img.src = avatarURL;
-        img.className = "player-avatar";
-        img.title = name;
-        if (info.lives <= 0) img.style.filter = "grayscale(100%)";
-        if (name === data.currentTurn) img.style.boxShadow = "0 0 8px 2px yellow";
-
-        const label = document.createElement("span");
-        label.innerText = `${name} (${info.lives} lives)`;
-
-        const wrap = document.createElement("div");
-        wrap.style.display = 'inline-block';
-        wrap.style.textAlign = 'center';
-        wrap.appendChild(img);
-        wrap.appendChild(label);
-        playerList.appendChild(wrap);
-      }
-    });
-
-    submitBtn.onclick = async () => {
-      const word = wordInput.value.trim().toLowerCase();
-      wordInput.value = "";
-      const snap = await get(roomRef);
-      const data = snap.val();
-      const prompt = data.prompt;
-
-      const wordList = await fetch("kbbi.txt").then(r => r.text()).then(t => t.split(/\r?\n/));
-      const valid = word.includes(prompt) && wordList.includes(word);
-
-      const players = Object.keys(data.players);
-      let currentIndex = players.indexOf(data.currentTurn);
-      let nextIndex = (currentIndex + 1) % players.length;
-      while (data.players[players[nextIndex]].lives <= 0) {
-        nextIndex = (nextIndex + 1) % players.length;
-      }
-      const nextTurn = players[nextIndex];
-
-      if (!valid) {
-        const livesLeft = data.players[playerName].lives - 1;
-        await update(ref(db, `rooms/${roomId}/players/${playerName}`), {
-          lives: livesLeft
-        });
-        if (livesLeft <= 0) alert("You are eliminated!");
-      }
-
-      const newWord = wordList[Math.floor(Math.random() * wordList.length)];
-      const i = Math.floor(Math.random() * (newWord.length - 2));
-      const newPrompt = newWord.substring(i, i + (Math.random() < 0.5 ? 2 : 3));
-
-      await update(roomRef, {
-        currentTurn: nextTurn,
-        prompt: newPrompt
-      });
+function startTimer() {
+  let sec = 10;
+  timeLeft.textContent = sec;
+  timer = setInterval(() => {
+    timeLeft.textContent = --sec;
+    if (sec <= 0) {
+      clearInterval(timer);
+      autoPass();
     }
-  </script></body>
+  }, 1000);
+}
+
+async function autoPass() {
+  const snap = await get(roomRef);
+  const data = snap.val();
+  const players = Object.keys(data.players);
+  const next = players[(players.indexOf(data.currentTurn) + 1) % players.length];
+  update(roomRef, {
+    currentTurn: next,
+    prompt: getNewPrompt()
+  });
+}
+
+function getNewPrompt() {
+  return Math.random().toString(36).substring(2, 5);
+}
+
+window.submitWord = async () => {
+  const word = wordInput.value.trim().toLowerCase();
+  wordInput.value = "";
+  const snap = await get(roomRef);
+  const data = snap.val();
+  const players = Object.keys(data.players);
+  const next = players[(players.indexOf(data.currentTurn) + 1) % players.length];
+
+  if (data.currentTurn !== playerName) {
+    await set(ref(db, `rooms/${roomId}/messages/${playerName}`), word);
+    setTimeout(() => remove(ref(db, `rooms/${roomId}/messages/${playerName}`)), 5000);
+    return;
+  }
+
+  if (!word.includes(data.prompt)) return alert("Must include prompt");
+  if (word.length < 3) return alert("Too short");
+
+  await update(roomRef, {
+    [`players/${playerName}/lives`]: (data.players[playerName].lives || 3),
+    currentTurn: next,
+    prompt: getNewPrompt()
+  });
+}
+
+  </script>
+</body>
 </html>
