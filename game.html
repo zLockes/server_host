@@ -107,10 +107,14 @@
 
       playerList.innerHTML = "";
       for (const [name, info] of Object.entries(data.players)) {
+        const avatarURL = (info.avatar && typeof info.avatar === "string") ? info.avatar : "defaulticon.png";
         const img = document.createElement("img");
-        img.src = info.avatar || "https://via.placeholder.com/48";
+        img.src = avatarURL;
         img.className = "player-avatar";
         img.title = name;
+        if (info.lives <= 0) img.style.filter = "grayscale(100%)";
+        if (name === data.currentTurn) img.style.boxShadow = "0 0 8px 2px yellow";
+
         const label = document.createElement("span");
         label.innerText = `${name} (${info.lives} lives)`;
 
@@ -149,9 +153,9 @@
         if (livesLeft <= 0) alert("You are eliminated!");
       }
 
-      const word = wordList[Math.floor(Math.random() * wordList.length)];
-      const i = Math.floor(Math.random() * (word.length - 2));
-      const newPrompt = word.substring(i, i + (Math.random() < 0.5 ? 2 : 3));
+      const newWord = wordList[Math.floor(Math.random() * wordList.length)];
+      const i = Math.floor(Math.random() * (newWord.length - 2));
+      const newPrompt = newWord.substring(i, i + (Math.random() < 0.5 ? 2 : 3));
 
       await update(roomRef, {
         currentTurn: nextTurn,

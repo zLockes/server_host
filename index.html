@@ -23,6 +23,7 @@
       color: white;
       width: 100%;
       max-width: 400px;
+      position: relative;
     }
     input, button {
       width: 100%;
@@ -57,6 +58,49 @@
       margin-bottom: 1rem;
       cursor: pointer;
     }
+    .device-id {
+      font-size: 0.75rem;
+      position: absolute;
+      bottom: 1rem;
+      left: 1rem;
+      opacity: 0.6;
+    }
+    .notif-popup {
+      position: fixed;
+      bottom: 1rem;
+      right: -400px;
+      background: white;
+      color: black;
+      padding: 1rem;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      width: 280px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      animation: slideIn 0.5s forwards;
+    }
+    @keyframes slideIn {
+      to { right: 1rem; }
+    }
+    .notif-content {
+      display: flex;
+      align-items: center;
+    }
+    .notif-content img {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      margin-right: 0.75rem;
+    }
+    .notif-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .notif-actions button {
+      padding: 0.25rem 0.75rem;
+      font-size: 0.75rem;
+    }
   </style>
 </head>
 <body>
@@ -69,10 +113,10 @@
     <input type="text" id="roomCode" placeholder="Room code" />
     <button id="createBtn">Create Room</button>
     <button id="joinBtn">Join Room</button>
-  </div>  <script type="module">
+    <div class="device-id">Your ID: <span id="deviceId"></span></div>
+  </div>  <div id="notif" class="notif-popup" style="display: none;"></div>  <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
-    import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-storage.js";
+    import { getDatabase, ref, set, get, onValue, remove } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
@@ -86,35 +130,48 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-    const storage = getStorage(app);
 
     const avatarInput = document.getElementById("avatarInput");
     const avatarPreview = document.getElementById("avatarPreview");
-    let avatarBlob = null;
+    let avatarFile = null;
+
+    const deviceId = localStorage.getItem("deviceId") || crypto.randomUUID();
+    localStorage.setItem("deviceId", deviceId);
+    document.getElementById("deviceId").innerText = deviceId;
 
     avatarInput.addEventListener("change", e => {
       const file = e.target.files[0];
       if (!file) return;
+      avatarFile = file;
       const reader = new FileReader();
       reader.onload = event => {
         avatarPreview.src = event.target.result;
-        avatarBlob = file;
       };
       reader.readAsDataURL(file);
     });
 
     async function uploadAvatar() {
-      if (!avatarBlob) return "defaulticon.png";
-      const fileRef = sRef(storage, `avatars/${Date.now()}.png`);
-      await uploadBytes(fileRef, avatarBlob);
-      return await getDownloadURL(fileRef);
+      if (!avatarFile) return "defaulticon.png";
+      const formData = new FormData();
+      formData.append("file", avatarFile);
+      formData.append("upload_preset", "KBBIGS");
+      try {
+        const res = await fetch("https://api.cloudinary.com/v1_1/drrigx6o7/image/upload", {
+          method: "POST",
+          body: formData
+        });
+        const data = await res.json();
+        return data.secure_url;
+      } catch (err) {
+        console.error("Cloudinary upload failed:", err);
+        return "defaulticon.png";
+      }
     }
 
     async function createRoom() {
       const playerName = document.getElementById("playerName").value.trim();
       if (!playerName) return alert("Enter your name");
       const avatar = await uploadAvatar();
-
       const roomId = Math.random().toString(36).substring(2, 6).toUpperCase();
       const roomRef = ref(db, `rooms/${roomId}`);
       const existing = await get(roomRef);
@@ -158,5 +215,46 @@
 
     document.getElementById("createBtn").onclick = createRoom;
     document.getElementById("joinBtn").onclick = joinRoom;
+
+    const notif = document.getElementById("notif");
+    const myInviteRef = ref(db, `invites/${deviceId}`);
+
+    onValue(myInviteRef, snap => {
+      if (!snap.exists()) return;
+      const { from, avatar, room } = snap.val();
+      notif.innerHTML = `
+        <div class="notif-content">
+          <img src="${avatar}" alt="avatar" />
+          <div>
+            <strong>${from}</strong> invited you to join Room <b>${room}</b>
+          </div>
+        </div>
+        <div class="notif-actions">
+          <button onclick="declineInvite()">Decline</button>
+          <button onclick="acceptInvite('${room}')">Accept</button>
+        </div>
+      `;
+      notif.style.display = "flex";
+    });
+
+    window.declineInvite = async () => {
+      await remove(ref(db, `invites/${deviceId}`));
+      notif.style.display = "none";
+    }
+
+    window.acceptInvite = async (room) => {
+      const name = document.getElementById("playerName").value.trim();
+      if (!name) return alert("Enter your name first!");
+      const roomSnap = await get(ref(db, `rooms/${room}`));
+      if (!roomSnap.exists()) return alert("Room not found");
+      const avatar = await uploadAvatar();
+      await set(ref(db, `rooms/${room}/players/${name}`), {
+        avatar,
+        lives: 3
+      });
+      localStorage.setItem("roomId", room);
+      localStorage.setItem("playerName", name);
+      window.location.href = "lobby.html";
+    }
   </script></body>
 </html>
