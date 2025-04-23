@@ -125,146 +125,149 @@
     <button id="startGameBtn" style="display: none">Start Game</button>
     <button onclick="sendInvite()">Invite Player</button>
     <div class="invite-box">Your ID: <span id="deviceId"></span></div>
-  </div>  <div id="notif" class="notif-popup" style="display: none;"></div>  <script type="module">
+  </div>
+  <div id="notif" class="notif-popup" style="display: none;"></div>
+  <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import { getDatabase, ref, onValue, update, set, get, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+    import { getDatabase, ref, onValue, update, set, get, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";const app = initializeApp({
+  apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
+  authDomain: "kbbig-s.firebaseapp.com",
+  databaseURL: "https://kbbig-s-default-rtdb.asia-southeast1.firebasedatabase.app/",
+  projectId: "kbbig-s",
+  storageBucket: "kbbig-s.appspot.com",
+  messagingSenderId: "616380393795",
+  appId: "1:616380393795:web:f95558aadf8b4c520327f6"
+});
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
-      authDomain: "kbbig-s.firebaseapp.com",
-      databaseURL: "https://kbbig-s-default-rtdb.asia-southeast1.firebasedatabase.app/",
-      projectId: "kbbig-s",
-      storageBucket: "kbbig-s.appspot.com",
-      messagingSenderId: "616380393795",
-      appId: "1:616380393795:web:f95558aadf8b4c520327f6"
-    };
+const db = getDatabase(app);
+const roomId = localStorage.getItem("roomId");
+const playerName = localStorage.getItem("playerName");
+const deviceId = localStorage.getItem("deviceId") || crypto.randomUUID();
+localStorage.setItem("deviceId", deviceId);
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+const playerRef = ref(db, `rooms/${roomId}/players/${playerName}`);
+onDisconnect(playerRef).remove();
 
-    const roomId = localStorage.getItem("roomId");
-    const playerName = localStorage.getItem("playerName");
-    const roomDisplay = document.getElementById("roomDisplay");
-    const playerList = document.getElementById("playerList");
-    const startGameBtn = document.getElementById("startGameBtn");
+document.getElementById("deviceId").innerText = deviceId;
+const roomDisplay = document.getElementById("roomDisplay");
+const playerList = document.getElementById("playerList");
+const startGameBtn = document.getElementById("startGameBtn");
 
-    const deviceId = localStorage.getItem("deviceId") || crypto.randomUUID();
-    localStorage.setItem("deviceId", deviceId);
-    document.getElementById("deviceId").innerText = deviceId;
+let idVisible = true;
+window.toggleRoomDisplay = () => {
+  idVisible = !idVisible;
+  roomDisplay.innerText = idVisible ? roomId : "-";
+}
 
-    const roomRef = ref(db, `rooms/${roomId}`);
-    const playerRef = ref(db, `rooms/${roomId}/players/${playerName}`);
+window.leaveRoom = async () => {
+  await remove(playerRef);
+  localStorage.clear();
+  window.location.href = "index.html";
+}
 
-    if (!roomId || !playerName) {
-      alert("Missing session. Rejoin from main menu.");
-      window.location.href = "index.html";
-    }
+const roomRef = ref(db, `rooms/${roomId}`);
+onValue(roomRef, (snap) => {
+  const data = snap.val();
+  if (!data) return;
+  if (data.status === "playing") {
+    window.location.href = "game.html";
+    return;
+  }
+  roomDisplay.innerText = idVisible ? roomId : "-";
+  playerList.innerHTML = "";
+  for (const [name, info] of Object.entries(data.players || {})) {
+    const avatarURL = (info.avatar && typeof info.avatar === "string") ? info.avatar : "defaulticon.png";
+    const img = document.createElement("img");
+    img.src = avatarURL;
+    img.className = "player-avatar";
+    img.title = name;
+    const label = document.createElement("span");
+    label.innerText = `${name}`;
+    const wrap = document.createElement("div");
+    wrap.style.display = 'inline-block';
+    wrap.style.textAlign = 'center';
+    wrap.appendChild(img);
+    wrap.appendChild(label);
+    playerList.appendChild(wrap);
+  }
+  startGameBtn.style.display = data.currentTurn === playerName ? "block" : "none";
+});
 
-    onDisconnect(playerRef).remove();
+startGameBtn.onclick = async () => {
+  const wordList = await fetch("kbbi.txt").then(r => r.text()).then(t => t.split(/\r?\n/));
+  const word = wordList[Math.floor(Math.random() * wordList.length)];
+  const i = Math.floor(Math.random() * (word.length - 2));
+  const prompt = word.substring(i, i + (Math.random() < 0.5 ? 2 : 3));
+  update(roomRef, { status: "playing", prompt });
+}
 
-    let idVisible = true;
-    window.toggleRoomDisplay = () => {
-      idVisible = !idVisible;
-      roomDisplay.innerText = idVisible ? roomId : "-";
-    }
+window.sendInvite = async () => {
+  const inviteTo = prompt("Enter ID to invite:");
+  if (!inviteTo) return;
+  const playerSnap = await get(playerRef);
+  const player = playerSnap.val();
+  await set(ref(db, `invites/${inviteTo}`), {
+    from: playerName,
+    avatar: player?.avatar || "defaulticon.png",
+    room: roomId,
+    timestamp: Date.now()
+  });
+  alert("Invite sent!");
+}
 
-    window.leaveRoom = async () => {
-      await remove(playerRef);
-      localStorage.removeItem("roomId");
-      localStorage.removeItem("playerName");
-      window.location.href = "index.html";
-    }
+const notif = document.getElementById("notif");
+const myInviteRef = ref(db, `invites/${deviceId}`);
+onValue(myInviteRef, snap => {
+  if (!snap.exists()) return;
+  const { from, avatar, room } = snap.val();
+  notif.innerHTML = `
+    <div class="notif-content">
+      <img src="${avatar}" alt="avatar" />
+      <div>
+        <strong>${from}</strong> invited you to join Room <b>${room}</b>
+      </div>
+    </div>
+    <div class="notif-actions">
+      <button onclick="declineInvite()">Decline</button>
+      <button onclick="acceptInvite('${room}')">Accept</button>
+    </div>
+  `;
+  notif.style.display = "flex";
+  setTimeout(() => {
+    notif.style.display = "none";
+    remove(ref(db, `invites/${deviceId}`));
+  }, 10000);
+});
 
-    onValue(roomRef, (snap) => {
-      const data = snap.val();
-      if (!data) return;
-      if (data.status === "playing") {
-        window.location.href = "game.html";
-        return;
-      }
+window.declineInvite = async () => {
+  await remove(ref(db, `invites/${deviceId}`));
+  notif.style.display = "none";
+}
 
-      playerList.innerHTML = "";
-      const players = data.players || {};
-      for (const [name, p] of Object.entries(players)) {
-        const avatarURL = (p.avatar && typeof p.avatar === "string") ? p.avatar : "defaulticon.png";
-        const avatar = document.createElement("img");
-        avatar.src = avatarURL;
-        avatar.className = "player-avatar";
-        avatar.title = name;
-        const label = document.createElement("span");
-        label.innerText = `${name}`;
+window.acceptInvite = async (room) => {
+  const name = localStorage.getItem("playerName");
+  if (!name) return alert("Enter your name on the main menu first!");
+  const snap = await get(ref(db, `rooms/${room}`));
+  if (!snap.exists()) return alert("Room not found");
+  const avatar = snap.val().players?.[playerName]?.avatar || "defaulticon.png";
+  await set(ref(db, `rooms/${room}/players/${name}`), { avatar, lives: 3 });
+  localStorage.setItem("roomId", room);
+  window.location.href = "lobby.html";
+}
 
-        const wrapper = document.createElement("div");
-        wrapper.style.display = 'inline-block';
-        wrapper.style.textAlign = 'center';
-        wrapper.appendChild(avatar);
-        wrapper.appendChild(label);
-        playerList.appendChild(wrapper);
-      }
+// IDLE TIMEOUT (2 mins)
+let idleTimer;
+function resetIdle() {
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    alert("Idle too long. You have been removed from the room.");
+    leaveRoom();
+  }, 2 * 60 * 1000);
+}
+window.addEventListener("mousemove", resetIdle);
+window.addEventListener("keydown", resetIdle);
+resetIdle();
 
-      startGameBtn.style.display = data.currentTurn === playerName ? "block" : "none";
-    });
-
-    startGameBtn.onclick = async () => {
-      const wordList = await fetch("kbbi.txt").then(r => r.text()).then(t => t.split(/\r?\n/));
-      const word = wordList[Math.floor(Math.random() * wordList.length)];
-      const i = Math.floor(Math.random() * (word.length - 2));
-      const prompt = word.substring(i, i + (Math.random() < 0.5 ? 2 : 3));
-      update(roomRef, { status: "playing", prompt });
-    }
-
-    window.sendInvite = async () => {
-      const inviteTo = prompt("Enter ID to invite:");
-      if (!inviteTo) return;
-      const playerSnap = await get(ref(db, `rooms/${roomId}/players/${playerName}`));
-      const player = playerSnap.val();
-      await set(ref(db, `invites/${inviteTo}`), {
-        from: playerName,
-        avatar: player?.avatar || "defaulticon.png",
-        room: roomId,
-        timestamp: Date.now()
-      });
-      alert("Invite sent!");
-    };
-
-    const myInviteRef = ref(db, `invites/${deviceId}`);
-    onValue(myInviteRef, snap => {
-      if (!snap.exists()) return;
-      const { from, avatar, room } = snap.val();
-      const notif = document.getElementById("notif");
-      notif.innerHTML = `
-        <div class="notif-content">
-          <img src="${avatar}" alt="avatar" />
-          <div>
-            <strong>${from}</strong> invited you to join Room <b>${room}</b>
-          </div>
-        </div>
-        <div class="notif-actions">
-          <button onclick="declineInvite()">Decline</button>
-          <button onclick="acceptInvite('${room}')">Accept</button>
-        </div>
-      `;
-      notif.style.display = "flex";
-      setTimeout(() => {
-        notif.style.display = "none";
-        remove(ref(db, `invites/${deviceId}`));
-      }, 10000);
-    });
-
-    window.declineInvite = async () => {
-      await remove(ref(db, `invites/${deviceId}`));
-      document.getElementById("notif").style.display = "none";
-    }
-
-    window.acceptInvite = async (room) => {
-      const name = localStorage.getItem("playerName");
-      if (!name) return alert("Enter your name on the main menu first!");
-      const snap = await get(ref(db, `rooms/${room}`));
-      if (!snap.exists()) return alert("Room not found");
-      const avatar = snap.val().players?.[playerName]?.avatar || "defaulticon.png";
-      await set(ref(db, `rooms/${room}/players/${name}`), { avatar, lives: 3 });
-      localStorage.setItem("roomId", room);
-      window.location.href = "lobby.html";
-    }
-  </script></body>
+  </script>
+</body>
 </html>
