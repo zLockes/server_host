@@ -22,7 +22,6 @@ const storage = getStorage(app);
 
 const playerNameInput = document.getElementById("playerName");
 const roomCodeInput = document.getElementById("roomCode");
-const profileTextInput = document.getElementById("profileText");
 const profileImageInput = document.getElementById("profileImage");
 const menu = document.getElementById("menu");
 const game = document.getElementById("game");
@@ -38,7 +37,6 @@ const modalContent = document.getElementById("modal-content");
 
 let roomId = "";
 let playerName = "";
-let profileText = "";
 let profileAvatar = "";
 let timer = null;
 let wordList = [];
@@ -67,23 +65,27 @@ function showModal(text) {
   setTimeout(() => (modal.style.display = "none"), 2000);
 }
 
-async function uploadProfileImage() {
+async function getProfileImageURL() {
   const file = profileImageInput.files[0];
   if (!file) return "";
-  const path = `avatars/${Date.now()}_${file.name}`;
-  const storageRef = sRef(storage, path);
-  await uploadBytes(storageRef, file);
-  return await getDownloadURL(storageRef);
+  try {
+    const path = `avatars/${Date.now()}_${file.name}`;
+    const storageRef = sRef(storage, path);
+    await uploadBytes(storageRef, file);
+    return await getDownloadURL(storageRef);
+  } catch (e) {
+    console.warn("Upload failed:", e);
+    return "";
+  }
 }
 
 window.createRoom = async function () {
   playerName = playerNameInput.value.trim();
-  profileText = profileTextInput.value.trim();
   if (!playerName) return showModal("Enter a name");
-  profileAvatar = await uploadProfileImage();
+  profileAvatar = await getProfileImageURL();
   roomId = Math.random().toString(36).substring(2, 6).toUpperCase();
   await set(ref(db, `rooms/${roomId}`), {
-    players: { [playerName]: { profile: profileText, avatar: profileAvatar } },
+    players: { [playerName]: { avatar: profileAvatar } },
     currentTurn: playerName,
     fragment: randomFragment()
   });
@@ -92,16 +94,12 @@ window.createRoom = async function () {
 
 window.joinRoom = async function () {
   playerName = playerNameInput.value.trim();
-  profileText = profileTextInput.value.trim();
   if (!playerName) return showModal("Enter name and room");
-  profileAvatar = await uploadProfileImage();
+  profileAvatar = await getProfileImageURL();
   roomId = roomCodeInput.value.trim().toUpperCase();
   const snap = await get(ref(db, `rooms/${roomId}`));
   if (!snap.exists()) return showModal("Room does not exist!");
-  await set(ref(db, `rooms/${roomId}/players/${playerName}`), {
-    profile: profileText,
-    avatar: profileAvatar
-  });
+  await set(ref(db, `rooms/${roomId}/players/${playerName}`), { avatar: profileAvatar });
   enterGame();
 };
 
@@ -126,30 +124,19 @@ function enterGame() {
       wrapper.style.display = "inline-block";
       wrapper.style.margin = "6px";
 
-      if (info.avatar) {
-        const img = document.createElement("img");
-        img.src = info.avatar;
-        img.width = 40;
-        img.height = 40;
-        img.style.borderRadius = "50%";
-        wrapper.appendChild(img);
-      } else {
-        const badge = document.createElement("div");
-        badge.textContent = info.profile || name;
-        badge.style.background = "rgba(255,255,255,0.2)";
-        badge.style.padding = "8px";
-        badge.style.borderRadius = "12px";
-        badge.style.textAlign = "center";
-        badge.style.color = "white";
-        wrapper.appendChild(badge);
-      }
+      const img = document.createElement("img");
+      img.src = info.avatar || "https://via.placeholder.com/40";
+      img.width = 40;
+      img.height = 40;
+      img.style.borderRadius = "50%";
+      wrapper.appendChild(img);
 
       const label = document.createElement("div");
       label.textContent = name;
       label.style.fontSize = "0.75rem";
       label.style.textAlign = "center";
 
-      wrapper.onclick = () => showModal(`${name}'s Profile: ${info.profile || 'None'}`);
+      wrapper.onclick = () => showModal(`${name}'s Profile`);
       wrapper.appendChild(label);
       playerList.appendChild(wrapper);
     });
@@ -294,7 +281,6 @@ window.manualNextFragment = async function () {
     <h1>Bomb Party</h1>
     <div id="menu">
       <input type="text" id="playerName" placeholder="Enter your name" />
-      <input type="text" id="profileText" placeholder="Enter profile status" />
       <input id="profileImage" type="file" accept="image/*" />
       <button onclick="createRoom()">Create Room</button>
       <input type="text" id="roomCode" placeholder="Room code" />
@@ -314,4 +300,4 @@ window.manualNextFragment = async function () {
   </div>
   <div id="modal"><div id="modal-content"></div></div>
 </body>
-</html>v0000
+</html>v12
