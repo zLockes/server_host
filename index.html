@@ -3,188 +3,84 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bomb Party Clone</title>
-  <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-  <script defer>
-    const firebaseConfig = {
-      apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
-      authDomain: "kbbig-s.firebaseapp.com",
-      databaseURL: "https://kbbig-s-default-rtdb.asia-southeast1.firebasedatabase.app/",
-      projectId: "kbbig-s",
-      storageBucket: "kbbig-s.appspot.com",
-      messagingSenderId: "616380393795",
-      appId: "1:616380393795:web:f95558aadf8b4c520327f6",
-      measurementId: "G-0X9K79WRLW"
-    };
-    firebase.initializeApp(firebaseConfig);
-  </script>
-  <script defer src="main.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <script src="fire.js"></script>
+  <script src="main.js"></script>
   <style>
-    body { font-family: sans-serif; padding: 2rem; background: #f2f2f2; }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #4e54c8, #8f94fb);
+      background-size: 400% 400%;
+      animation: gradientShift 10s ease infinite;
+    }
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .container {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 2rem;
+      max-width: 400px;
+      width: 100%;
+      color: white;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+    input, button {
+      width: 100%;
+      margin: 0.5rem 0;
+      padding: 0.75rem;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+    }
+    input {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+    }
+    button {
+      background-color: rgba(255, 255, 255, 0.3);
+      color: white;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background-color: rgba(255, 255, 255, 0.5);
+    }
     .hidden { display: none; }
   </style>
 </head>
 <body>
-  <h1>Bomb Party Clone</h1>  <div id="menu">
-    <input type="text" id="playerName" placeholder="Enter your name" />
-    <button onclick="createRoom()">Create Room</button>
-    <input type="text" id="roomCode" placeholder="Room code" />
-    <button onclick="joinRoom()">Join Room</button>
-  </div>  <div id="game" class="hidden">
-    <h2 id="roomInfo"></h2>
-    <h3>Current Turn: <span id="currentTurn"></span></h3>
-    <h3>Fragment: <span id="fragment"></span></h3>
-    <h3>Time Left: <span id="timeLeft">10</span>s</h3>
-    <input type="text" id="wordInput" placeholder="Type word" />
-    <button onclick="submitWord()">Submit</button>
-    <button onclick="manualNextFragment()">Next Fragment</button>
-  </div>  <script>
-    const menu = document.getElementById("menu");
-    const game = document.getElementById("game");
-    const playerNameInput = document.getElementById("playerName");
-    const roomCodeInput = document.getElementById("roomCode");
-    const roomInfo = document.getElementById("roomInfo");
-    const currentTurn = document.getElementById("currentTurn");
-    const fragmentSpan = document.getElementById("fragment");
-    const wordInput = document.getElementById("wordInput");
-    const timeLeft = document.getElementById("timeLeft");
+  <div class="container">
+    <h1>Bomb Party</h1><div id="menu">
+  <input type="text" id="playerName" placeholder="Enter your name" />
+  <button onclick="createRoom()">Create Room</button>
+  <input type="text" id="roomCode" placeholder="Room code" />
+  <button onclick="joinRoom()">Join Room</button>
+</div>
 
-    let playerName = "";
-    let roomId = "";
-    let timer = null;
+<div id="game" class="hidden">
+  <h2 id="roomInfo"></h2>
+  <h3>Turn: <span id="currentTurn"></span></h3>
+  <h3>Fragment: <span id="fragment"></span></h3>
+  <h3>Time Left: <span id="timeLeft">10</span>s</h3>
+  <input type="text" id="wordInput" placeholder="Type word" />
+  <button onclick="submitWord()">Submit</button>
+  <button onclick="manualNextFragment()">Next Fragment</button>
+</div>
 
-    function randomFragment() {
-      const consonants = "bcdfghjklmnpqrstvwxyz";
-      const vowels = "aeiou";
-      const part1 = consonants[Math.floor(Math.random() * consonants.length)];
-      const part2 = vowels[Math.floor(Math.random() * vowels.length)];
-      const part3 = Math.random() > 0.5 ? consonants[Math.floor(Math.random() * consonants.length)] : "";
-      return part1 + part2 + part3;
-    }
-
-    function manualNextFragment() {
-      if (!roomId) return;
-      const newFrag = randomFragment();
-      firebase.database().ref("rooms/" + roomId).update({
-        fragment: newFrag
-      });
-    }
-
-    function createRoom() {
-      playerName = playerNameInput.value.trim();
-      if (!playerName) return alert("Enter a name");
-
-      roomId = Math.random().toString(36).substring(2, 6).toUpperCase();
-      firebase.database().ref("rooms/" + roomId).set({
-        players: {
-          [playerName]: true
-        },
-        currentTurn: playerName,
-        fragment: randomFragment()
-      });
-      enterGame();
-    }
-
-    function joinRoom() {
-      playerName = playerNameInput.value.trim();
-      roomId = roomCodeInput.value.trim().toUpperCase();
-      if (!playerName || !roomId) return alert("Enter name and room code");
-
-      const roomRef = firebase.database().ref("rooms/" + roomId + "/players/");
-      roomRef.update({
-        [playerName]: true
-      });
-      enterGame();
-    }
-
-    function enterGame() {
-      menu.classList.add("hidden");
-      game.classList.remove("hidden");
-      roomInfo.textContent = "Room: " + roomId;
-
-      firebase.database().ref("rooms/" + roomId).on("value", (snap) => {
-        const data = snap.val();
-        if (!data) return;
-        currentTurn.textContent = data.currentTurn;
-        fragmentSpan.textContent = data.fragment;
-
-        if (data.currentTurn === playerName) startTimer();
-        else clearTimer();
-      });
-    }
-
-    function startTimer() {
-      clearTimer();
-      let seconds = 10;
-      timeLeft.textContent = seconds;
-
-      timer = setInterval(() => {
-        seconds--;
-        timeLeft.textContent = seconds;
-        if (seconds <= 0) {
-          clearTimer();
-          autoPassTurn();
-        }
-      }, 1000);
-    }
-
-    function clearTimer() {
-      clearInterval(timer);
-      timeLeft.textContent = "0";
-    }
-
-    function autoPassTurn() {
-      firebase.database().ref("rooms/" + roomId).once("value").then(snap => {
-        const data = snap.val();
-        const playerKeys = Object.keys(data.players);
-        const currentIndex = playerKeys.indexOf(data.currentTurn);
-        const nextIndex = (currentIndex + 1) % playerKeys.length;
-        const nextPlayer = playerKeys[nextIndex];
-        firebase.database().ref("rooms/" + roomId).update({
-          currentTurn: nextPlayer,
-          fragment: randomFragment()
-        });
-      });
-    }
-
-    async function validateWord(word) {
-      try {
-        const res = await fetch(`https://kbbi.raf555.dev/api/v1/entry/${word}`);
-        return res.ok;
-      } catch (err) {
-        console.error("Validation error:", err);
-        return false;
-      }
-    }
-
-    async function submitWord() {
-      const word = wordInput.value.trim().toLowerCase();
-      wordInput.value = "";
-
-      const snap = await firebase.database().ref("rooms/" + roomId).once("value");
-      const data = snap.val();
-      const fragment = data.fragment;
-
-      if (!word.includes(fragment)) {
-        alert("Word must contain the fragment!");
-        return;
-      }
-
-      const isValid = await validateWord(word);
-      if (!isValid) {
-        alert("Not a valid word in KBBI!");
-        return;
-      }
-
-      const playerKeys = Object.keys(data.players);
-      const currentIndex = playerKeys.indexOf(data.currentTurn);
-      const nextIndex = (currentIndex + 1) % playerKeys.length;
-      const nextPlayer = playerKeys[nextIndex];
-
-      firebase.database().ref("rooms/" + roomId).update({
-        currentTurn: nextPlayer,
-        fragment: randomFragment()
-      });
-    }
-  </script></body>
+  </div>
+</body>
 </html>
