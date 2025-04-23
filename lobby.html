@@ -1,0 +1,128 @@
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lobby - Bomb Party</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: linear-gradient(135deg, #4e54c8, #8f94fb);
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .container {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      padding: 2rem;
+      border-radius: 20px;
+      color: white;
+      text-align: center;
+      width: 100%;
+      max-width: 400px;
+    }
+    .player-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin: 5px;
+      border: 2px solid white;
+    }
+    #playerList span {
+      display: block;
+      font-size: 0.8rem;
+      margin-top: 0.25rem;
+    }
+    button {
+      width: 100%;
+      padding: 0.75rem;
+      margin-top: 1rem;
+      border: none;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.3);
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Lobby</h1>
+    <h2>Room: <span id="roomDisplay">-</span></h2>
+    <div id="playerList"></div>
+    <button id="startGameBtn" style="display: none">Start Game</button>
+  </div>  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+    import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
+      authDomain: "kbbig-s.firebaseapp.com",
+      databaseURL: "https://kbbig-s-default-rtdb.asia-southeast1.firebasedatabase.app/",
+      projectId: "kbbig-s",
+      storageBucket: "kbbig-s.appspot.com",
+      messagingSenderId: "616380393795",
+      appId: "1:616380393795:web:f95558aadf8b4c520327f6"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const roomId = localStorage.getItem("roomId");
+    const playerName = localStorage.getItem("playerName");
+    const roomDisplay = document.getElementById("roomDisplay");
+    const playerList = document.getElementById("playerList");
+    const startGameBtn = document.getElementById("startGameBtn");
+
+    if (!roomId || !playerName) {
+      alert("Missing session. Rejoin from main menu.");
+      window.location.href = "index.html";
+    }
+
+    roomDisplay.textContent = roomId;
+
+    const roomRef = ref(db, `rooms/${roomId}`);
+
+    onValue(roomRef, (snap) => {
+      const data = snap.val();
+      if (!data) return;
+      if (data.status === "playing") {
+        window.location.href = "game.html";
+        return;
+      }
+
+      playerList.innerHTML = "";
+      const players = data.players || {};
+      for (const [name, p] of Object.entries(players)) {
+        const avatar = document.createElement("img");
+        avatar.src = p.avatar || "https://via.placeholder.com/48";
+        avatar.className = "player-avatar";
+        avatar.title = name;
+        const label = document.createElement("span");
+        label.innerText = `${name}`;
+
+        const wrapper = document.createElement("div");
+        wrapper.style.display = 'inline-block';
+        wrapper.style.textAlign = 'center';
+        wrapper.appendChild(avatar);
+        wrapper.appendChild(label);
+        playerList.appendChild(wrapper);
+      }
+
+      startGameBtn.style.display = data.currentTurn === playerName ? "block" : "none";
+    });
+
+    startGameBtn.onclick = async () => {
+      const wordList = await fetch("kbbi.txt").then(r => r.text()).then(t => t.split(/\r?\n/));
+      const word = wordList[Math.floor(Math.random() * wordList.length)];
+      const i = Math.floor(Math.random() * (word.length - 2));
+      const prompt = word.substring(i, i + (Math.random() < 0.5 ? 2 : 3));
+      update(roomRef, { status: "playing", prompt });
+    }
+  </script></body>
+</html>

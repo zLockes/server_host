@@ -1,0 +1,162 @@
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Game - Bomb Party</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #4e54c8, #8f94fb);
+    }
+    .container {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 2rem;
+      text-align: center;
+      color: white;
+      width: 100%;
+      max-width: 400px;
+    }
+    .player-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin: 5px;
+      border: 2px solid white;
+    }
+    #playerList span {
+      display: block;
+      font-size: 0.8rem;
+      margin-top: 0.25rem;
+    }
+    input, button {
+      width: 100%;
+      padding: 0.75rem;
+      margin: 0.5rem 0;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+    }
+    button {
+      background: rgba(255, 255, 255, 0.3);
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background: rgba(255, 255, 255, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Bomb Party</h1>
+    <h2>Prompt: <span id="prompt">-</span></h2>
+    <h3>Turn: <span id="turn">-</span></h3>
+    <input id="wordInput" placeholder="Type a word..." disabled />
+    <button id="submitBtn" disabled>Submit</button>
+    <div id="playerList"></div>
+  </div>  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+    import { getDatabase, ref, get, update, onValue } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
+      authDomain: "kbbig-s.firebaseapp.com",
+      databaseURL: "https://kbbig-s-default-rtdb.asia-southeast1.firebasedatabase.app/",
+      projectId: "kbbig-s",
+      storageBucket: "kbbig-s.appspot.com",
+      messagingSenderId: "616380393795",
+      appId: "1:616380393795:web:f95558aadf8b4c520327f6"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const roomId = localStorage.getItem("roomId");
+    const playerName = localStorage.getItem("playerName");
+    const promptSpan = document.getElementById("prompt");
+    const turnSpan = document.getElementById("turn");
+    const wordInput = document.getElementById("wordInput");
+    const submitBtn = document.getElementById("submitBtn");
+    const playerList = document.getElementById("playerList");
+
+    const roomRef = ref(db, `rooms/${roomId}`);
+
+    onValue(roomRef, snap => {
+      const data = snap.val();
+      if (!data || data.status !== "playing") return;
+
+      if (Object.values(data.players).filter(p => p.lives > 0).length === 1) {
+        window.location.href = "end.html";
+        return;
+      }
+
+      promptSpan.textContent = data.prompt;
+      turnSpan.textContent = data.currentTurn;
+
+      wordInput.disabled = data.currentTurn !== playerName;
+      submitBtn.disabled = data.currentTurn !== playerName;
+
+      playerList.innerHTML = "";
+      for (const [name, info] of Object.entries(data.players)) {
+        const img = document.createElement("img");
+        img.src = info.avatar || "https://via.placeholder.com/48";
+        img.className = "player-avatar";
+        img.title = name;
+        const label = document.createElement("span");
+        label.innerText = `${name} (${info.lives} lives)`;
+
+        const wrap = document.createElement("div");
+        wrap.style.display = 'inline-block';
+        wrap.style.textAlign = 'center';
+        wrap.appendChild(img);
+        wrap.appendChild(label);
+        playerList.appendChild(wrap);
+      }
+    });
+
+    submitBtn.onclick = async () => {
+      const word = wordInput.value.trim().toLowerCase();
+      wordInput.value = "";
+      const snap = await get(roomRef);
+      const data = snap.val();
+      const prompt = data.prompt;
+
+      const wordList = await fetch("kbbi.txt").then(r => r.text()).then(t => t.split(/\r?\n/));
+      const valid = word.includes(prompt) && wordList.includes(word);
+
+      const players = Object.keys(data.players);
+      let currentIndex = players.indexOf(data.currentTurn);
+      let nextIndex = (currentIndex + 1) % players.length;
+      while (data.players[players[nextIndex]].lives <= 0) {
+        nextIndex = (nextIndex + 1) % players.length;
+      }
+      const nextTurn = players[nextIndex];
+
+      if (!valid) {
+        const livesLeft = data.players[playerName].lives - 1;
+        await update(ref(db, `rooms/${roomId}/players/${playerName}`), {
+          lives: livesLeft
+        });
+        if (livesLeft <= 0) alert("You are eliminated!");
+      }
+
+      const word = wordList[Math.floor(Math.random() * wordList.length)];
+      const i = Math.floor(Math.random() * (word.length - 2));
+      const newPrompt = word.substring(i, i + (Math.random() < 0.5 ? 2 : 3));
+
+      await update(roomRef, {
+        currentTurn: nextTurn,
+        prompt: newPrompt
+      });
+    }
+  </script></body>
+</html>

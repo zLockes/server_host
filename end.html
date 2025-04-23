@@ -1,0 +1,89 @@
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Game Over - Bomb Party</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #4e54c8, #8f94fb);
+    }
+    .container {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      padding: 2rem;
+      border-radius: 20px;
+      color: white;
+      text-align: center;
+      width: 100%;
+      max-width: 400px;
+    }
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+    p {
+      font-size: 1.25rem;
+    }
+    button {
+      margin-top: 1rem;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.3);
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Game Over</h1>
+    <p id="winnerText">-</p>
+    <button onclick="goToMenu()">Return to Menu</button>
+  </div>  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
+      authDomain: "kbbig-s.firebaseapp.com",
+      databaseURL: "https://kbbig-s-default-rtdb.asia-southeast1.firebasedatabase.app/",
+      projectId: "kbbig-s",
+      storageBucket: "kbbig-s.appspot.com",
+      messagingSenderId: "616380393795",
+      appId: "1:616380393795:web:f95558aadf8b4c520327f6"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const roomId = localStorage.getItem("roomId");
+    const winnerText = document.getElementById("winnerText");
+
+    if (!roomId) window.location.href = "index.html";
+
+    const roomRef = ref(db, `rooms/${roomId}/players`);
+    get(roomRef).then(snap => {
+      const data = snap.val();
+      const alive = Object.entries(data).filter(([_, p]) => p.lives > 0);
+      if (alive.length === 1) {
+        winnerText.textContent = `Winner: ${alive[0][0]}`;
+      } else {
+        winnerText.textContent = "Game ended.";
+      }
+    });
+
+    function goToMenu() {
+      localStorage.clear();
+      window.location.href = "index.html";
+    }
+  </script></body>
+</html>
