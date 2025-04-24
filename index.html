@@ -1,266 +1,168 @@
-<!DOCTYPE html><html lang="en">
+<!-- PATCHED: index.html with avatar + profile fix --><!DOCTYPE html><html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bomb Party - Main Menu</title>
+  <title>Bomb Party</title>
   <style>
     body {
       margin: 0;
       padding: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #4e54c8, #8f94fb);
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
-      font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #4e54c8, #8f94fb);
-    }
-    .menu-container {
-      background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(10px);
-      border-radius: 20px;
-      padding: 2rem;
-      text-align: center;
       color: white;
+    }
+    .container {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      padding: 2rem;
+      border-radius: 20px;
       width: 100%;
-      max-width: 400px;
-      position: relative;
+      max-width: 420px;
+      text-align: center;
     }
     input, button {
       width: 100%;
       padding: 0.75rem;
-      margin: 0.5rem 0;
       border: none;
       border-radius: 10px;
+      margin-top: 1rem;
       font-size: 1rem;
     }
     button {
-      background: rgba(255, 255, 255, 0.3);
+      background: rgba(255,255,255,0.3);
       color: white;
       cursor: pointer;
     }
     button:hover {
-      background: rgba(255, 255, 255, 0.5);
+      background: rgba(255,255,255,0.5);
     }
-    #avatarPreview {
+    #profileImageInput {
+      display: none;
+    }
+    #imagePreview {
       width: 80px;
       height: 80px;
       border-radius: 50%;
       object-fit: cover;
-      border: 3px solid white;
-      margin: 0.5rem auto;
       display: block;
+      margin: 0 auto;
+      border: 3px solid white;
     }
     .uploadBtn {
-      background: rgba(255, 255, 255, 0.2);
+      background: rgba(255,255,255,0.2);
+      display: inline-block;
       padding: 0.5rem 1rem;
       border-radius: 10px;
-      display: inline-block;
-      margin-bottom: 1rem;
       cursor: pointer;
-    }
-    .device-id {
-      font-size: 0.75rem;
-      position: absolute;
-      bottom: 1rem;
-      left: 1rem;
-      opacity: 0.6;
-    }
-    .notif-popup {
-      position: fixed;
-      bottom: 1rem;
-      right: -400px;
-      background: white;
-      color: black;
-      padding: 1rem;
-      border-radius: 10px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-      width: 280px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      animation: slideIn 0.5s forwards;
-    }
-    @keyframes slideIn {
-      to { right: 1rem; }
-    }
-    .notif-content {
-      display: flex;
-      align-items: center;
-    }
-    .notif-content img {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      margin-right: 0.75rem;
-    }
-    .notif-actions {
-      display: flex;
-      gap: 0.5rem;
-    }
-    .notif-actions button {
-      padding: 0.25rem 0.75rem;
-      font-size: 0.75rem;
+      margin-top: 0.5rem;
     }
   </style>
 </head>
 <body>
-  <div class="menu-container">
-    <h1>Bomb Party</h1>
-    <img id="avatarPreview" src="defaulticon.png" alt="avatar" onclick="document.getElementById('avatarInput').click()" />
-    <label for="avatarInput" class="uploadBtn">Upload Avatar</label>
-    <input type="file" id="avatarInput" accept="image/*" style="display: none;" />
+  <div class="container">
+    <h2>Bomb Party</h2>
+    <img id="imagePreview" src="defaulticon.png" onclick="document.getElementById('profileImageInput').click()" />
+    <label for="profileImageInput" class="uploadBtn">Upload Profile Image</label>
+    <input type="file" id="profileImageInput" accept="image/*" />
     <input type="text" id="playerName" placeholder="Enter your name" />
-    <input type="text" id="roomCode" placeholder="Room code" />
-    <button id="createBtn">Create Room</button>
-    <button id="joinBtn">Join Room</button>
-    <div class="device-id">Your ID: <span id="deviceId"></span></div>
-  </div>  <div id="notif" class="notif-popup" style="display: none;"></div>  <script type="module">
+    <input type="text" id="roomCode" placeholder="Room code (for joining)" />
+    <button onclick="createRoom()">Create Room</button>
+    <button onclick="joinRoom()">Join Room</button>
+  </div>
+  <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import { getDatabase, ref, set, get, onValue, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+    import { getDatabase, ref, set, get, update } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";const firebaseConfig = {
+  apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
+  authDomain: "kbbig-s.firebaseapp.com",
+  databaseURL: "https://kbbig-s-default-rtdb.asia-southeast1.firebasedatabase.app/",
+  projectId: "kbbig-s",
+  storageBucket: "kbbig-s.appspot.com",
+  messagingSenderId: "616380393795",
+  appId: "1:616380393795:web:f95558aadf8b4c520327f6"
+};
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
-      authDomain: "kbbig-s.firebaseapp.com",
-      databaseURL: "https://kbbig-s-default-rtdb.asia-southeast1.firebasedatabase.app/",
-      projectId: "kbbig-s",
-      storageBucket: "kbbig-s.appspot.com",
-      messagingSenderId: "616380393795",
-      appId: "1:616380393795:web:f95558aadf8b4c520327f6"
-    };
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+let profileBlob = null;
+const imageInput = document.getElementById("profileImageInput");
+const preview = document.getElementById("imagePreview");
 
-    const avatarInput = document.getElementById("avatarInput");
-    const avatarPreview = document.getElementById("avatarPreview");
-    let avatarFile = null;
+imageInput.addEventListener("change", e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    preview.src = reader.result;
+    profileBlob = file;
+  };
+  reader.readAsDataURL(file);
+});
 
-    const deviceId = localStorage.getItem("deviceId") || crypto.randomUUID();
-    localStorage.setItem("deviceId", deviceId);
-    document.getElementById("deviceId").innerText = deviceId;
+async function uploadAvatar() {
+  if (!profileBlob) return "defaulticon.png";
+  const formData = new FormData();
+  formData.append("file", profileBlob);
+  formData.append("upload_preset", "KBBIGS");
+  const res = await fetch("https://api.cloudinary.com/v1_1/drrigx6o7/image/upload", {
+    method: "POST",
+    body: formData
+  });
+  const data = await res.json();
+  return data.secure_url;
+}
 
-    avatarInput.addEventListener("change", e => {
-      const file = e.target.files[0];
-      if (!file) return;
-      avatarFile = file;
-      const reader = new FileReader();
-      reader.onload = event => {
-        avatarPreview.src = event.target.result;
-      };
-      reader.readAsDataURL(file);
-    });
+window.createRoom = async () => {
+  const name = document.getElementById("playerName").value.trim();
+  if (!name) return alert("Enter your name");
 
-    async function uploadAvatar() {
-      if (!avatarFile) return "defaulticon.png";
-      const formData = new FormData();
-      formData.append("file", avatarFile);
-      formData.append("upload_preset", "KBBIGS");
-      try {
-        const res = await fetch("https://api.cloudinary.com/v1_1/drrigx6o7/image/upload", {
-          method: "POST",
-          body: formData
-        });
-        const data = await res.json();
-        return data.secure_url;
-      } catch (err) {
-        console.error("Cloudinary upload failed:", err);
-        return "defaulticon.png";
-      }
-    }
+  const avatar = await uploadAvatar();
+  console.log("createRoom() called");
+  console.log("Name:", name);
+  console.log("Avatar URL:", avatar);
 
-    async function createRoom() {
-      const playerName = document.getElementById("playerName").value.trim();
-      if (!playerName) return alert("Enter your name");
-      const avatar = await uploadAvatar();
-      const roomId = Math.random().toString(36).substring(2, 6).toUpperCase();
-      const roomRef = ref(db, `rooms/${roomId}`);
-      const playerRef = ref(db, `rooms/${roomId}/players/${playerName}`);
-      const existing = await get(roomRef);
-      if (existing.exists()) return alert("Room already exists. Try again.");
+  const roomId = Math.random().toString(36).substring(2, 6).toUpperCase();
+  await set(ref(db, `rooms/${roomId}/players/${name}`), {
+    avatar,
+    lives: 3
+  });
+  await update(ref(db, `rooms/${roomId}`), {
+    currentTurn: name,
+    status: "waiting"
+  });
 
-      await set(roomRef, {
-        players: {
-          [playerName]: { avatar, lives: 3 }
-        },
-        currentTurn: playerName,
-        status: "waiting"
-      });
+  localStorage.setItem("roomId", roomId);
+  localStorage.setItem("playerName", name);
+  window.location.href = "lobby.html";
+};
 
-      onDisconnect(playerRef).remove();
-      localStorage.setItem("roomId", roomId);
-      localStorage.setItem("playerName", playerName);
-      window.location.href = "lobby.html";
-    }
+window.joinRoom = async () => {
+  const name = document.getElementById("playerName").value.trim();
+  const roomId = document.getElementById("roomCode").value.trim().toUpperCase();
+  if (!name || !roomId) return alert("Enter both name and room code");
 
-    async function joinRoom() {
-      const playerName = document.getElementById("playerName").value.trim();
-      const roomId = document.getElementById("roomCode").value.trim().toUpperCase();
-      if (!playerName || !roomId) return alert("Fill all fields");
-      const avatar = await uploadAvatar();
+  const avatar = await uploadAvatar();
+  console.log("joinRoom() called");
+  console.log("Name:", name);
+  console.log("Avatar URL:", avatar);
 
-      const roomRef = ref(db, `rooms/${roomId}`);
-      const playerRef = ref(db, `rooms/${roomId}/players/${playerName}`);
-      const snap = await get(roomRef);
-      if (!snap.exists()) return alert("Room not found");
+  const snap = await get(ref(db, `rooms/${roomId}`));
+  if (!snap.exists()) return alert("Room not found");
 
-      const players = snap.val().players || {};
-      if (players[playerName]) return alert("Name already taken in this room");
+  await set(ref(db, `rooms/${roomId}/players/${name}`), {
+    avatar,
+    lives: 3
+  });
 
-      await set(playerRef, {
-        avatar,
-        lives: 3
-      });
+  localStorage.setItem("roomId", roomId);
+  localStorage.setItem("playerName", name);
+  window.location.href = "lobby.html";
+};
 
-      onDisconnect(playerRef).remove();
-      localStorage.setItem("roomId", roomId);
-      localStorage.setItem("playerName", playerName);
-      window.location.href = "lobby.html";
-    }
-
-    document.getElementById("createBtn").onclick = createRoom;
-    document.getElementById("joinBtn").onclick = joinRoom;
-
-    const notif = document.getElementById("notif");
-    const myInviteRef = ref(db, `invites/${deviceId}`);
-
-    onValue(myInviteRef, snap => {
-      if (!snap.exists()) return;
-      const { from, avatar, room } = snap.val();
-      notif.innerHTML = `
-        <div class="notif-content">
-          <img src="${avatar}" alt="avatar" />
-          <div>
-            <strong>${from}</strong> invited you to join Room <b>${room}</b>
-          </div>
-        </div>
-        <div class="notif-actions">
-          <button onclick="declineInvite()">Decline</button>
-          <button onclick="acceptInvite('${room}')">Accept</button>
-        </div>
-      `;
-      notif.style.display = "flex";
-    });
-
-    window.declineInvite = async () => {
-      await remove(ref(db, `invites/${deviceId}`));
-      notif.style.display = "none";
-    }
-
-    window.acceptInvite = async (room) => {
-      const name = document.getElementById("playerName").value.trim();
-      if (!name) return alert("Enter your name first!");
-      const roomSnap = await get(ref(db, `rooms/${room}`));
-      if (!roomSnap.exists()) return alert("Room not found");
-      const avatar = await uploadAvatar();
-      const playerRef = ref(db, `rooms/${room}/players/${name}`);
-      await set(playerRef, {
-        avatar,
-        lives: 3
-      });
-      onDisconnect(playerRef).remove();
-      localStorage.setItem("roomId", room);
-      localStorage.setItem("playerName", name);
-      window.location.href = "lobby.html";
-    }
-  </script></body>
+  </script>
+</body>
 </html>

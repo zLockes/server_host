@@ -1,4 +1,4 @@
-<!-- PATCHED: LOBBY WITH CHAT POPUP + MESSAGE DISPLAY --><!DOCTYPE html><html lang="en">
+<!-- FINAL PROFILE LAYOUT SYNCED FROM GAME.HTML TO LOBBY --><!DOCTYPE html><html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -22,23 +22,38 @@
       color: white;
       text-align: center;
       width: 100%;
-      max-width: 400px;
+      max-width: 420px;
       position: relative;
     }
+    #playerList {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
     .player-avatar {
-      width: 48px;
-      height: 48px;
+      width: 64px;
+      height: 64px;
       border-radius: 50%;
-      object-fit: cover;
-      margin: 5px;
       border: 2px solid white;
+      object-fit: cover;
+      margin-bottom: 0.25rem;
+    }
+    .player-block {
       position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 72px;
+    }
+    .player-name {
+      font-size: 0.75rem;
+      word-break: break-word;
     }
     .chat-popup {
       position: absolute;
-      bottom: 60px;
-      left: 50%;
-      transform: translateX(-50%);
+      bottom: 78px;
       background: rgba(255,255,255,0.9);
       color: black;
       padding: 0.25rem 0.5rem;
@@ -52,46 +67,52 @@
       80% { opacity: 1; }
       100% { opacity: 0; }
     }
-    button {
-      width: 100%;
-      padding: 0.75rem;
-      margin-top: 1rem;
-      border: none;
-      border-radius: 10px;
-      background: rgba(255, 255, 255, 0.3);
-      color: white;
-      font-size: 1rem;
+    .top-left {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      font-size: 1.25rem;
+      cursor: pointer;
+      background: rgba(255,255,255,0.2);
+      padding: 0.25rem 0.75rem;
+      border-radius: 8px;
+    }
+    .hide-id-toggle {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      font-size: 0.75rem;
+      opacity: 0.6;
       cursor: pointer;
     }
-    .input-row input {
-      width: 100%;
-      padding: 0.75rem;
-      margin-top: 1rem;
-      border: none;
-      border-radius: 10px;
-    }
-    .input-row button {
-      margin-top: 0.5rem;
-      padding: 0.75rem;
-      border: none;
-      border-radius: 10px;
-      background: rgba(255,255,255,0.3);
-      color: white;
+    .invite-box {
+      position: absolute;
+      bottom: 1rem;
+      left: 1rem;
+      font-size: 0.8rem;
+      opacity: 0.6;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
   <div class="container">
+    <div class="top-left" onclick="leaveRoom()">&lt;</div>
+    <div class="hide-id-toggle" onclick="toggleRoomDisplay()">Hide ID</div>
+    <h1>Lobby</h1>
     <h2>Room: <span id="roomDisplay">-</span></h2>
     <div id="playerList"></div>
+    <button id="startGameBtn" style="display: none">Start Game</button>
+    <button onclick="sendInvite()">Invite Player</button>
     <div class="input-row">
-      <input type="text" id="chatInput" placeholder="Send a message..." />
+      <input type="text" id="chatInput" placeholder="Send message..." />
       <button onclick="sendMessage()">Send</button>
     </div>
+    <div class="invite-box" onclick="copyDeviceId()">Your ID: <span id="deviceId"></span></div>
   </div>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import { getDatabase, ref, onValue, set, remove } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";const app = initializeApp({
+    import { getDatabase, ref, onValue, update, set, get, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";const app = initializeApp({
   apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
   authDomain: "kbbig-s.firebaseapp.com",
   databaseURL: "https://kbbig-s-default-rtdb.asia-southeast1.firebasedatabase.app/",
@@ -102,48 +123,125 @@
 });
 
 const db = getDatabase(app);
-const playerName = localStorage.getItem("playerName");
 const roomId = localStorage.getItem("roomId");
-const playerList = document.getElementById("playerList");
-const chatInput = document.getElementById("chatInput");
+const playerName = localStorage.getItem("playerName");
+const deviceId = localStorage.getItem("deviceId") || crypto.randomUUID();
+localStorage.setItem("deviceId", deviceId);
+document.getElementById("deviceId").innerText = deviceId;
 
 const roomRef = ref(db, `rooms/${roomId}`);
+const playerRef = ref(db, `rooms/${roomId}/players/${playerName}`);
 const msgRef = ref(db, `rooms/${roomId}/messages`);
+
+onDisconnect(playerRef).remove();
+
+let idVisible = true;
+window.toggleRoomDisplay = () => {
+  idVisible = !idVisible;
+  document.getElementById("roomDisplay").innerText = idVisible ? roomId : "-";
+}
+
+window.leaveRoom = async () => {
+  await remove(playerRef);
+  localStorage.removeItem("roomId");
+  localStorage.removeItem("playerName");
+  window.location.href = "index.html";
+}
 
 onValue(roomRef, (snap) => {
   const data = snap.val();
-  if (!data || !data.players) return;
-  playerList.innerHTML = "";
-  for (const [name, info] of Object.entries(data.players)) {
+  if (!data) return;
+  if (data.status === "playing") {
+    window.location.href = "game.html";
+    return;
+  }
+  document.getElementById("roomDisplay").innerText = idVisible ? roomId : "-";
+  const list = document.getElementById("playerList");
+  list.innerHTML = "";
+  for (const [name, info] of Object.entries(data.players || {})) {
+    const block = document.createElement("div");
+    block.className = "player-block";
+
     const avatar = document.createElement("img");
     avatar.className = "player-avatar";
     avatar.src = info.avatar || "defaulticon.png";
     avatar.setAttribute("data-name", name);
-    playerList.appendChild(avatar);
+
+    const label = document.createElement("div");
+    label.className = "player-name";
+    label.innerText = name;
+
+    block.appendChild(avatar);
+    block.appendChild(label);
+    list.appendChild(block);
   }
+
+  document.getElementById("startGameBtn").style.display = data.currentTurn === playerName ? "block" : "none";
 });
 
 onValue(msgRef, snap => {
   const messages = snap.val() || {};
-  for (const [name, text] of Object.entries(messages)) {
-    const el = document.querySelector(`.player-avatar[data-name='${name}']`);
-    if (!el) continue;
-    let old = el.querySelector(".chat-popup");
+  for (const [name, msg] of Object.entries(messages)) {
+    const block = document.querySelector(`.player-avatar[data-name='${name}']`)?.parentElement;
+    if (!block) continue;
+    const old = block.querySelector(".chat-popup");
     if (old) old.remove();
-    const bubble = document.createElement("div");
-    bubble.className = "chat-popup";
-    bubble.innerText = text;
-    el.appendChild(bubble);
+    const el = document.createElement("div");
+    el.className = "chat-popup";
+    el.innerText = msg;
+    block.appendChild(el);
   }
 });
 
 window.sendMessage = async () => {
-  const msg = chatInput.value.trim();
-  if (!msg) return;
-  chatInput.value = "";
-  await set(ref(db, `rooms/${roomId}/messages/${playerName}`), msg);
+  const val = document.getElementById("chatInput").value.trim();
+  if (!val) return;
+  await set(ref(db, `rooms/${roomId}/messages/${playerName}`), val);
   setTimeout(() => remove(ref(db, `rooms/${roomId}/messages/${playerName}`)), 5000);
-};
+  document.getElementById("chatInput").value = "";
+}
+
+window.copyDeviceId = async () => {
+  await navigator.clipboard.writeText(deviceId);
+  alert("Copied ID: " + deviceId);
+}
+// ... previous HTML preserved above ...
+
+onValue(roomRef, (snap) => {
+  const data = snap.val();
+  if (!data) return;
+  console.log("Room data loaded:", data);
+  console.log("Loaded players:", data.players);
+
+  if (data.status === "playing") {
+    window.location.href = "game.html";
+    return;
+  }
+  document.getElementById("roomDisplay").innerText = idVisible ? roomId : "-";
+  const list = document.getElementById("playerList");
+  list.innerHTML = "";
+  for (const [name, info] of Object.entries(data.players || {})) {
+    console.log(`Rendering player: ${name}`, info);
+    const block = document.createElement("div");
+    block.className = "player-block";
+
+    const avatar = document.createElement("img");
+    avatar.className = "player-avatar";
+    avatar.src = info.avatar || "defaulticon.png";
+    avatar.setAttribute("data-name", name);
+
+    const label = document.createElement("div");
+    label.className = "player-name";
+    label.innerText = name;
+
+    block.appendChild(avatar);
+    block.appendChild(label);
+    list.appendChild(block);
+  }
+
+  document.getElementById("startGameBtn").style.display = data.currentTurn === playerName ? "block" : "none";
+});
+
 
   </script>
 </body>
