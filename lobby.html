@@ -1,118 +1,123 @@
-<!-- FINAL PROFILE LAYOUT SYNCED FROM GAME.HTML TO LOBBY --><!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lobby - Bomb Party</title>
   <style>
+    * { box-sizing: border-box; }
     body {
       margin: 0;
       padding: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #4e54c8, #8f94fb);
+      height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
-      background: linear-gradient(135deg, #4e54c8, #8f94fb);
-      font-family: 'Segoe UI', sans-serif;
     }
     .container {
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255,255,255,0.1);
       backdrop-filter: blur(10px);
-      padding: 2rem;
       border-radius: 20px;
-      color: white;
-      text-align: center;
+      padding: 2rem;
       width: 100%;
       max-width: 420px;
+      color: white;
+      text-align: center;
       position: relative;
     }
-    #playerList {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 0.75rem;
-      margin-top: 1rem;
+    button {
+      width: 100%;
+      padding: 0.75rem;
+      border: none;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.3);
+      color: white;
+      font-size: 1rem;
+      margin: 0.5rem 0;
+      cursor: pointer;
     }
-    .player-avatar {
+    button:hover {
+      background: rgba(255,255,255,0.5);
+    }
+    .avatar {
       width: 64px;
       height: 64px;
       border-radius: 50%;
       border: 2px solid white;
       object-fit: cover;
-      margin-bottom: 0.25rem;
+      margin: 0.25rem;
     }
-    .player-block {
-      position: relative;
+    #playerList {
+      margin-top: 1rem;
       display: flex;
-      flex-direction: column;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+    #modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0,0,0,0.6);
+      display: none;
       align-items: center;
-      width: 72px;
+      justify-content: center;
+      z-index: 1000;
     }
-    .player-name {
-      font-size: 0.75rem;
-      word-break: break-word;
-    }
-    .chat-popup {
-      position: absolute;
-      bottom: 78px;
-      background: rgba(255,255,255,0.9);
+    #modal-content {
+      background: white;
       color: black;
-      padding: 0.25rem 0.5rem;
-      border-radius: 12px;
-      font-size: 0.75rem;
-      white-space: nowrap;
-      animation: fadeOut 5s forwards;
+      padding: 1rem 2rem;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 300px;
+      text-align: center;
     }
-    @keyframes fadeOut {
-      0% { opacity: 1; }
-      80% { opacity: 1; }
-      100% { opacity: 0; }
-    }
-    .top-left {
-      position: absolute;
-      top: 1rem;
-      left: 1rem;
-      font-size: 1.25rem;
-      cursor: pointer;
-      background: rgba(255,255,255,0.2);
-      padding: 0.25rem 0.75rem;
-      border-radius: 8px;
-    }
-    .hide-id-toggle {
-      position: absolute;
-      top: 1rem;
-      right: 1rem;
-      font-size: 0.75rem;
-      opacity: 0.6;
-      cursor: pointer;
-    }
-    .invite-box {
-      position: absolute;
-      bottom: 1rem;
-      left: 1rem;
+    .small-text {
       font-size: 0.8rem;
-      opacity: 0.6;
+      opacity: 0.8;
       cursor: pointer;
+      margin-top: 0.5rem;
+    }
+    .top-bar {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      cursor: pointer;
+      font-size: 1.2rem;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="top-left" onclick="leaveRoom()">&lt;</div>
-    <div class="hide-id-toggle" onclick="toggleRoomDisplay()">Hide ID</div>
-    <h1>Lobby</h1>
-    <h2>Room: <span id="roomDisplay">-</span></h2>
-    <div id="playerList"></div>
-    <button id="startGameBtn" style="display: none">Start Game</button>
-    <button onclick="sendInvite()">Invite Player</button>
-    <div class="input-row">
-      <input type="text" id="chatInput" placeholder="Send message..." />
-      <button onclick="sendMessage()">Send</button>
-    </div>
-    <div class="invite-box" onclick="copyDeviceId()">Your ID: <span id="deviceId"></span></div>
+<div class="container">
+  <div class="top-bar" onclick="leaveRoom()">&lt; Back</div>
+  <h2>Lobby</h2>
+  <h3>Room ID: <span id="roomIdText"></span></h3>
+  <h4>Your ID: <span id="deviceIdText"></span></h4>
+  <div id="playerList"></div>
+  <button onclick="openInviteModal()">Invite Player</button>
+  <button id="startButton" style="display:none;" onclick="startGame()">Start Game</button>
+</div>
+
+<div id="modal">
+  <div id="modal-content">
+    <h3>Invite Player</h3>
+    <input type="text" id="inviteInput" placeholder="Enter Player ID" style="width:100%;padding:0.5rem;margin:0.5rem 0;">
+    <button onclick="sendInvite()">Send Invite</button>
+    <button onclick="closeModal()" style="background:red;">Cancel</button>
   </div>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import { getDatabase, ref, onValue, update, set, get, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";const app = initializeApp({
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+import { getDatabase, ref, onValue, set, remove, update, off, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+
+const firebaseConfig = {
   apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
   authDomain: "kbbig-s.firebaseapp.com",
   databaseURL: "https://kbbig-s-default-rtdb.asia-southeast1.firebasedatabase.app/",
@@ -120,129 +125,99 @@
   storageBucket: "kbbig-s.appspot.com",
   messagingSenderId: "616380393795",
   appId: "1:616380393795:web:f95558aadf8b4c520327f6"
-});
+};
 
+const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+
 const roomId = localStorage.getItem("roomId");
 const playerName = localStorage.getItem("playerName");
-const deviceId = localStorage.getItem("deviceId") || crypto.randomUUID();
-localStorage.setItem("deviceId", deviceId);
-document.getElementById("deviceId").innerText = deviceId;
+const deviceId = localStorage.getItem("deviceId");
 
-const roomRef = ref(db, `rooms/${roomId}`);
-const playerRef = ref(db, `rooms/${roomId}/players/${playerName}`);
-const msgRef = ref(db, `rooms/${roomId}/messages`);
-
-onDisconnect(playerRef).remove();
-
-let idVisible = true;
-window.toggleRoomDisplay = () => {
-  idVisible = !idVisible;
-  document.getElementById("roomDisplay").innerText = idVisible ? roomId : "-";
-}
-
-window.leaveRoom = async () => {
-  await remove(playerRef);
-  localStorage.removeItem("roomId");
-  localStorage.removeItem("playerName");
+if (!roomId || !playerName) {
   window.location.href = "index.html";
 }
 
-onValue(roomRef, (snap) => {
+const roomIdText = document.getElementById("roomIdText");
+const deviceIdText = document.getElementById("deviceIdText");
+const playerList = document.getElementById("playerList");
+const startButton = document.getElementById("startButton");
+const modal = document.getElementById("modal");
+
+roomIdText.innerText = roomId;
+deviceIdText.innerText = deviceId;
+
+const roomRef = ref(db, `rooms/${roomId}`);
+
+onValue(roomRef, snap => {
   const data = snap.val();
-  if (!data) return;
-  if (data.status === "playing") {
-    window.location.href = "game.html";
+  if (!data || !data.players || !data.players[playerName]) {
+    window.location.href = "index.html";
     return;
   }
-  document.getElementById("roomDisplay").innerText = idVisible ? roomId : "-";
-  const list = document.getElementById("playerList");
-  list.innerHTML = "";
-  for (const [name, info] of Object.entries(data.players || {})) {
-    const block = document.createElement("div");
-    block.className = "player-block";
 
-    const avatar = document.createElement("img");
-    avatar.className = "player-avatar";
-    avatar.src = info.avatar || "defaulticon.png";
-    avatar.setAttribute("data-name", name);
+  playerList.innerHTML = "";
 
-    const label = document.createElement("div");
-    label.className = "player-name";
-    label.innerText = name;
-
-    block.appendChild(avatar);
-    block.appendChild(label);
-    list.appendChild(block);
+  for (const [name, info] of Object.entries(data.players)) {
+    const img = document.createElement("img");
+    img.src = info.avatar || "defaulticon.png";
+    img.className = "avatar";
+    img.title = name;
+    playerList.appendChild(img);
   }
 
-  document.getElementById("startGameBtn").style.display = data.currentTurn === playerName ? "block" : "none";
-});
-
-onValue(msgRef, snap => {
-  const messages = snap.val() || {};
-  for (const [name, msg] of Object.entries(messages)) {
-    const block = document.querySelector(`.player-avatar[data-name='${name}']`)?.parentElement;
-    if (!block) continue;
-    const old = block.querySelector(".chat-popup");
-    if (old) old.remove();
-    const el = document.createElement("div");
-    el.className = "chat-popup";
-    el.innerText = msg;
-    block.appendChild(el);
+  if (data.currentTurn === playerName && data.status === "waiting") {
+    startButton.style.display = "block";
+  } else {
+    startButton.style.display = "none";
   }
 });
 
-window.sendMessage = async () => {
-  const val = document.getElementById("chatInput").value.trim();
-  if (!val) return;
-  await set(ref(db, `rooms/${roomId}/messages/${playerName}`), val);
-  setTimeout(() => remove(ref(db, `rooms/${roomId}/messages/${playerName}`)), 5000);
-  document.getElementById("chatInput").value = "";
-}
+window.openInviteModal = () => {
+  modal.style.display = "flex";
+};
 
-window.copyDeviceId = async () => {
-  await navigator.clipboard.writeText(deviceId);
-  alert("Copied ID: " + deviceId);
-}
-// ... previous HTML preserved above ...
+window.closeModal = () => {
+  modal.style.display = "none";
+};
 
-onValue(roomRef, (snap) => {
-  const data = snap.val();
-  if (!data) return;
-  console.log("Room data loaded:", data);
-  console.log("Loaded players:", data.players);
+window.sendInvite = async () => {
+  const inviteId = document.getElementById("inviteInput").value.trim();
+  if (!inviteId) return alert("Enter an ID");
+  alert("Invitation sent to " + inviteId);
+  closeModal();
+};
 
-  if (data.status === "playing") {
-    window.location.href = "game.html";
-    return;
-  }
-  document.getElementById("roomDisplay").innerText = idVisible ? roomId : "-";
-  const list = document.getElementById("playerList");
-  list.innerHTML = "";
-  for (const [name, info] of Object.entries(data.players || {})) {
-    console.log(`Rendering player: ${name}`, info);
-    const block = document.createElement("div");
-    block.className = "player-block";
+window.leaveRoom = async () => {
+  off(roomRef);
+  try {
+    const snap = await get(roomRef);
+    const data = snap.val();
 
-    const avatar = document.createElement("img");
-    avatar.className = "player-avatar";
-    avatar.src = info.avatar || "defaulticon.png";
-    avatar.setAttribute("data-name", name);
-
-    const label = document.createElement("div");
-    label.className = "player-name";
-    label.innerText = name;
-
-    block.appendChild(avatar);
-    block.appendChild(label);
-    list.appendChild(block);
+    if (data) {
+      if (data.currentTurn === playerName) {
+        const players = Object.keys(data.players || {}).filter(p => p !== playerName);
+        if (players.length > 0) {
+          await update(roomRef, { currentTurn: players[0] });
+        } else {
+          await remove(roomRef);
+          window.location.href = "index.html";
+          return;
+        }
+      }
+      await remove(ref(db, `rooms/${roomId}/players/${playerName}`));
+    }
+  } catch (err) {
+    console.error("Failed to leave room:", err);
   }
 
-  document.getElementById("startGameBtn").style.display = data.currentTurn === playerName ? "block" : "none";
-});
+  window.location.href = "index.html";
+};
 
-
-  </script>
+window.startGame = async () => {
+  await update(roomRef, { status: "playing" });
+  window.location.href = "game.html";
+};
+</script>
 </body>
 </html>
