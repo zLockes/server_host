@@ -1,223 +1,282 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html><html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lobby - Bomb Party</title>
+  <title>Lobby</title>
   <style>
     * { box-sizing: border-box; }
     body {
-      margin: 0;
-      padding: 0;
+      margin: 0; padding: 0;
       font-family: 'Segoe UI', sans-serif;
       background: linear-gradient(135deg, #4e54c8, #8f94fb);
-      height: 100vh;
+      color: white;
       display: flex;
-      justify-content: center;
+      flex-direction: column;
       align-items: center;
+      min-height: 100vh;
+      overflow-x: hidden;
     }
-    .container {
-      background: rgba(255,255,255,0.1);
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      padding: 10px;
+      background: rgba(0,0,0,0.2);
       backdrop-filter: blur(10px);
-      border-radius: 20px;
-      padding: 2rem;
-      width: 100%;
-      max-width: 420px;
-      color: white;
-      text-align: center;
-      position: relative;
+      position: fixed;
+      top: 0;
+      z-index: 10;
     }
-    button {
-      width: 100%;
-      padding: 0.75rem;
-      border: none;
-      border-radius: 10px;
-      background: rgba(255,255,255,0.3);
-      color: white;
-      font-size: 1rem;
-      margin: 0.5rem 0;
+    .banner {
+      height: 50px;
+    }
+    .hamburger {
+      font-size: 24px;
       cursor: pointer;
     }
-    button:hover {
-      background: rgba(255,255,255,0.5);
+    .profile-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      object-fit: cover;
+      cursor: pointer;
     }
-    .avatar {
+    .menu {
+      display: none;
+      flex-direction: column;
+      position: absolute;
+      top: 60px;
+      left: 10px;
+      background: rgba(0,0,0,0.7);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .menu.show {
+      display: flex;
+    }
+    .menu button {
+      background: none;
+      border: none;
+      color: white;
+      padding: 10px;
+      text-align: left;
+      cursor: pointer;
+    }
+    .container {
+      margin-top: 80px;
+      width: 100%;
+      max-width: 600px;
+      padding: 1rem;
+      text-align: center;
+    }
+    #playerList {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .player {
+      text-align: center;
+      position: relative;
+      cursor: pointer;
+    }
+    .player img {
       width: 64px;
       height: 64px;
       border-radius: 50%;
       border: 2px solid white;
-      object-fit: cover;
-      margin: 0.25rem;
     }
-    #playerList {
-      margin-top: 1rem;
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      max-height: 150px;
-      overflow-y: auto;
+    .player-name {
+      font-size: 0.9rem;
+      margin-top: 5px;
     }
-    #modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0,0,0,0.6);
+    .chat-popup {
+      position: absolute;
+      top: -25px;
+      background: rgba(0,0,0,0.7);
+      padding: 5px 10px;
+      border-radius: 10px;
+      font-size: 0.75rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+      white-space: nowrap;
+    }
+    .chat-popup.show {
+      opacity: 1;
+    }
+    .chat-area {
+      margin-top: 20px;
+    }
+    #chatInput {
+      width: 100%;
+      padding: 10px;
+      border-radius: 10px;
+      border: none;
+      margin-top: 10px;
+    }
+    #countdown {
+      margin-top: 10px;
+      font-size: 20px;
+    }
+    .modal {
       display: none;
-      align-items: center;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6);
       justify-content: center;
+      align-items: center;
       z-index: 1000;
     }
-    #modal-content {
+    .modal-content {
       background: white;
       color: black;
-      padding: 1rem 2rem;
+      padding: 20px;
       border-radius: 10px;
       width: 90%;
-      max-width: 300px;
+      max-width: 400px;
       text-align: center;
     }
-    .small-text {
-      font-size: 0.8rem;
-      opacity: 0.8;
+    button {
+      background: rgba(255,255,255,0.3);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 10px;
+      margin-top: 10px;
       cursor: pointer;
-      margin-top: 0.5rem;
+      width: 100%;
     }
-    .top-bar {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      cursor: pointer;
-      font-size: 1.2rem;
+    button:hover {
+      background: rgba(255,255,255,0.5);
     }
   </style>
 </head>
-<body>
-<div class="container">
-  <div class="top-bar" onclick="leaveRoom()">&lt; Back</div>
-  <h2>Lobby</h2>
-  <h3>Room ID: <span id="roomIdText"></span></h3>
-  <h4>Your ID: <span id="deviceIdText"></span></h4>
+<body><div class="navbar">
+  <div class="hamburger" onclick="toggleMenu()">&#9776;</div>
+  <img src="banner.png" id="banner" class="banner">
+  <img id="profileIcon" src="defaulticon.png" class="profile-icon" onclick="openProfileUpload()">
+</div><div id="menu" class="menu">
+  <button onclick="toggleDarkMode()">Toggle Dark Mode</button>
+  <button onclick="invitePlayer()">Invite Player</button>
+  <button onclick="leaveRoom()">Back</button>
+</div><div class="container">
+  <h2>Room: <span id="roomId"></span></h2>
   <div id="playerList"></div>
-  <button onclick="openInviteModal()">Invite Player</button>
-  <button id="startButton" style="display:none;" onclick="startGame()">Start Game</button>
-</div>
-
-<div id="modal">
-  <div id="modal-content">
-    <h3>Invite Player</h3>
-    <input type="text" id="inviteInput" placeholder="Enter Player ID" style="width:100%;padding:0.5rem;margin:0.5rem 0;">
-    <button onclick="sendInvite()">Send Invite</button>
-    <button onclick="closeModal()" style="background:red;">Cancel</button>
+  <button id="startButton" onclick="startCountdown()">Start Game</button>
+  <div id="countdown"></div>
+  <div class="chat-area">
+    <input type="text" id="chatInput" placeholder="Type a message...">
   </div>
-</div>
+</div><div id="profileModal" class="modal">
+  <div class="modal-content">
+    <h3 id="profileName"></h3>
+    <button onclick="transferHost()">Transfer Ownership</button>
+    <button onclick="kickPlayer()">Kick Player</button>
+    <button onclick="banPlayer()">Ban Player</button>
+    <button onclick="closeProfileModal()">Close</button>
+  </div>
+</div><script>
+// Config
+let countdownInterval;
+let selectedPlayer = '';
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-import { getDatabase, ref, onValue, set, remove, update, off, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
-  authDomain: "kbbig-s.firebaseapp.com",
-  databaseURL: "https://kbbig-s-default-rtdb.asia-southeast1.firebasedatabase.app/",
-  projectId: "kbbig-s",
-  storageBucket: "kbbig-s.appspot.com",
-  messagingSenderId: "616380393795",
-  appId: "1:616380393795:web:f95558aadf8b4c520327f6"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-
-const roomId = localStorage.getItem("roomId");
-const playerName = localStorage.getItem("playerName");
-const deviceId = localStorage.getItem("deviceId");
-
-if (!roomId || !playerName) {
-  window.location.href = "index.html";
+function toggleMenu() {
+  document.getElementById('menu').classList.toggle('show');
 }
 
-const roomIdText = document.getElementById("roomIdText");
-const deviceIdText = document.getElementById("deviceIdText");
-const playerList = document.getElementById("playerList");
-const startButton = document.getElementById("startButton");
-const modal = document.getElementById("modal");
+function toggleDarkMode() {
+  document.body.classList.toggle('dark');
+  document.getElementById('banner').src = document.body.classList.contains('dark') ? 'bannerdark.png' : 'banner.png';
+}
 
-roomIdText.innerText = roomId;
-deviceIdText.innerText = deviceId;
+function openProfileUpload() {
+  alert('Upload Profile Feature Coming');
+}
 
-const roomRef = ref(db, `rooms/${roomId}`);
+function invitePlayer() {
+  const id = prompt('Enter Device ID to invite:');
+  if (id) alert('Invite sent to ' + id);
+}
 
-onValue(roomRef, snap => {
-  const data = snap.val();
-  if (!data || !data.players || !data.players[playerName]) {
-    window.location.href = "index.html";
-    return;
-  }
+function leaveRoom() {
+  alert('Left Room');
+  window.location.href = 'index.html';
+}
 
-  playerList.innerHTML = "";
+function startCountdown() {
+  clearInterval(countdownInterval);
+  let count = 5;
+  document.getElementById('countdown').textContent = count;
+  countdownInterval = setInterval(() => {
+    count--;
+    document.getElementById('countdown').textContent = count > 0 ? count : 'Starting...';
+    if (count <= 0) {
+      clearInterval(countdownInterval);
+      alert('Game Started!');
+      window.location.href = 'game.html';
+    }
+  }, 1000);
+}
 
-  for (const [name, info] of Object.entries(data.players)) {
-    const img = document.createElement("img");
-    img.src = info.avatar || "defaulticon.png";
-    img.className = "avatar";
-    img.title = name;
-    playerList.appendChild(img);
-  }
+function addPlayer(name, avatar='defaulticon.png') {
+  const list = document.getElementById('playerList');
+  const div = document.createElement('div');
+  div.className = 'player';
+  div.innerHTML = `<img src="${avatar}" onclick="openProfile('${name}')"><div class="player-name">${name}</div><div id="chat-${name}" class="chat-popup"></div>`;
+  list.appendChild(div);
+}
 
-  if (data.currentTurn === playerName && data.status === "waiting") {
-    startButton.style.display = "block";
-  } else {
-    startButton.style.display = "none";
+function openProfile(name) {
+  selectedPlayer = name;
+  document.getElementById('profileName').textContent = name;
+  document.getElementById('profileModal').style.display = 'flex';
+}
+
+function closeProfileModal() {
+  document.getElementById('profileModal').style.display = 'none';
+}
+
+function transferHost() {
+  alert('Transferred ownership to ' + selectedPlayer);
+  closeProfileModal();
+}
+
+function kickPlayer() {
+  alert('Kicked ' + selectedPlayer);
+  closeProfileModal();
+}
+
+function banPlayer() {
+  alert('Banned ' + selectedPlayer);
+  closeProfileModal();
+}
+
+document.getElementById('chatInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    const msg = e.target.value.trim();
+    if (!msg) return;
+    showChatPopup('Player1', msg);
+    e.target.value = '';
   }
 });
 
-window.openInviteModal = () => {
-  modal.style.display = "flex";
-};
-
-window.closeModal = () => {
-  modal.style.display = "none";
-};
-
-window.sendInvite = async () => {
-  const inviteId = document.getElementById("inviteInput").value.trim();
-  if (!inviteId) return alert("Enter an ID");
-  alert("Invitation sent to " + inviteId);
-  closeModal();
-};
-
-window.leaveRoom = async () => {
-  off(roomRef);
-  try {
-    const snap = await get(roomRef);
-    const data = snap.val();
-
-    if (data) {
-      if (data.currentTurn === playerName) {
-        const players = Object.keys(data.players || {}).filter(p => p !== playerName);
-        if (players.length > 0) {
-          await update(roomRef, { currentTurn: players[0] });
-        } else {
-          await remove(roomRef);
-          window.location.href = "index.html";
-          return;
-        }
-      }
-      await remove(ref(db, `rooms/${roomId}/players/${playerName}`));
-    }
-  } catch (err) {
-    console.error("Failed to leave room:", err);
+function showChatPopup(player, message) {
+  const el = document.getElementById('chat-' + player);
+  if (el) {
+    el.textContent = message;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 3000);
   }
+}
 
-  window.location.href = "index.html";
+window.onload = () => {
+  document.getElementById('roomId').textContent = 'ABCDE';
+  addPlayer('Player1');
+  addPlayer('Player2');
+  addPlayer('Player3');
 };
-
-window.startGame = async () => {
-  await update(roomRef, { status: "playing" });
-  window.location.href = "game.html";
-};
-</script>
-</body>
+</script></body>
 </html>
