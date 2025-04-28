@@ -25,9 +25,8 @@ body{margin:0;padding:0;font-family:'Segoe UI',sans-serif;background:linear-grad
 .popup .modal-content,.modal .modal-content{background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);border-radius:20px;padding:2rem;color:white;text-align:center;width:90%;max-width:350px;}
 .popup input{width:90%;padding:10px;margin:5px 0;border-radius:8px;border:none;background:rgba(255,255,255,0.2);color:white;text-align:center;font-size:1.2rem;}
 .loading{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;z-index:2000;color:white;font-size:2rem;}
-#codeBoxes{display:flex;flex-direction:column;align-items:center;}
-#codeBoxes input{width:60px;height:60px;margin:5px 0;border-radius:10px;border:none;background:rgba(255,255,255,0.2);color:white;font-size:1.5rem;text-align:center;}
 .icon{width:20px;vertical-align:middle;margin-right:5px;}
+a{color:lightblue;text-decoration:underline;cursor:pointer;}
 .dark{background:linear-gradient(135deg,#2c3e50,#4ca1af);}
 </style>
 
@@ -63,33 +62,40 @@ body{margin:0;padding:0;font-family:'Segoe UI',sans-serif;background:linear-grad
   </div>
 </div>
 
+<!-- Login Window -->
 <div id="loginWindow" class="popup hidden">
   <div class="modal-content">
     <h2>Login</h2>
-    <button onclick="googleLogin()" style="margin:5px;background:rgba(255,255,255,0.2);padding:10px;border-radius:10px;"><img src="google.png" class="icon"> Google Login</button>
-    <button onclick="openRegisterWindow()" style="margin:5px;background:rgba(255,255,255,0.2);padding:10px;border-radius:10px;"><img src="kbbiglog.png" class="icon"> KBBIG Login</button>
+    <input id="usernameLogin" placeholder="Username">
+    <input id="passwordLogin" type="password" placeholder="Password">
+    <button onclick="submitLogin()">Login</button>
+    <p style="margin-top:10px;">Don't have an account? <a onclick="openRegisterWindow()">Register here!</a></p>
     <button onclick="closeAllWindows()" style="margin-top:10px;">Cancel</button>
   </div>
 </div>
 
+<!-- Register Window -->
 <div id="registerWindow" class="popup hidden">
   <div class="modal-content">
-    <h2>Register with Email</h2>
-    <input id="emailRegister" placeholder="Email">
-    <input id="nameRegister" placeholder="Name">
-    <input id="avatarRegister" type="file">
-    <button onclick="submitRegister()">Done</button>
+    <h2>Register</h2>
+    <input id="usernameRegister" placeholder="Username">
+    <input id="passwordRegister" type="password" placeholder="Password">
+    <input id="passwordRepeat" type="password" placeholder="Repeat Password">
+    <button onclick="submitRegister()">Register</button>
+    <button onclick="closeAllWindows()" style="margin-top:10px;">Cancel</button>
   </div>
 </div>
 
+<!-- Verify Code Window -->
 <div id="verifyWindow" class="popup hidden">
   <div class="modal-content">
-    <h2>Enter 7-digit Code</h2>
-    <div id="codeBoxes"></div>
+    <h2>Verification Code</h2>
+    <input id="codeInput" maxlength="7" placeholder="Enter 7-digit code">
     <button onclick="submitVerification()">Verify</button>
   </div>
 </div>
 
+<!-- Loading -->
 <div id="loading" class="loading">Loading...</div>
 
 <script>
@@ -117,21 +123,6 @@ function openLoginWindow(){closeAllWindows();document.getElementById('loginWindo
 function openRegisterWindow(){closeAllWindows();document.getElementById('registerWindow').classList.remove('hidden');document.getElementById('registerWindow').style.display='flex';}
 function closeAllWindows(){document.querySelectorAll('.popup').forEach(e=>{e.classList.add('hidden');e.style.display='none';});}
 function logout(){auth.signOut().then(()=>{localStorage.removeItem('loggedIn');document.getElementById('profileIcon').src="guess-acc.png";location.reload();});}
-function googleLogin(){
-  const provider=new firebase.auth.GoogleAuthProvider();
-  document.getElementById('loading').style.display='flex';
-  auth.signInWithPopup(provider).then(result=>{
-    const user=result.user;
-    document.getElementById('profileIcon').src=user.photoURL||"defaulticon.png";
-    localStorage.setItem('loggedIn','true');
-    document.getElementById('logoutBtn').classList.remove('hidden');
-    document.getElementById('deleteBtn').classList.remove('hidden');
-    closeAllWindows();
-    document.getElementById('loading').style.display='none';
-  }).catch(error=>{
-    auth.signInWithRedirect(provider);
-  });
-}
 function handleRoom(action){
   const name=document.getElementById('playerName').value.trim();
   if(!name)return alert('Enter name');
@@ -143,40 +134,43 @@ function handleRoom(action){
   localStorage.setItem('playerName',name);
   window.location.href='lobby.html';
 }
+function submitLogin(){
+  const user=document.getElementById('usernameLogin').value.trim();
+  const pass=document.getElementById('passwordLogin').value.trim();
+  if(user&&pass){alert("Login success (demo)");closeAllWindows();}
+  else{alert('Enter both fields');}
+}
 function submitRegister(){
-  const email=document.getElementById('emailRegister').value.trim();
-  const name=document.getElementById('nameRegister').value.trim();
-  if(!email||!name)return alert('Fill all fields');
-  sendVerificationEmail(email);
+  const user=document.getElementById('usernameRegister').value.trim();
+  const pass=document.getElementById('passwordRegister').value.trim();
+  const repeat=document.getElementById('passwordRepeat').value.trim();
+  if(!user||!pass||!repeat)return alert('Fill all fields');
+  if(pass!==repeat)return alert('Passwords do not match');
+  sendVerificationEmail(user+"@demo.com"); // sending email to fake email for now
   openVerifyWindow();
 }
 function sendVerificationEmail(email){
   const code=Math.floor(1000000+Math.random()*9000000).toString();
   localStorage.setItem('verificationCode',code);
-  emailjs.send('service_6fddbyo','template_s09tyfc',{to_email:email,code:code});
+  emailjs.send('service_6fddbyo','template_s09tyfc',{to_email:email,code:code}).then(()=>{
+    alert('Verification Code Sent!');
+  });
 }
 function openVerifyWindow(){
   closeAllWindows();
-  const container=document.getElementById('codeBoxes');
-  container.innerHTML='';
-  for(let i=0;i<7;i++){
-    const input=document.createElement('input');
-    input.maxLength=1;
-    container.appendChild(input);
-  }
   document.getElementById('verifyWindow').classList.remove('hidden');
   document.getElementById('verifyWindow').style.display='flex';
 }
 function submitVerification(){
-  const code=Array.from(document.querySelectorAll('#codeBoxes input')).map(i=>i.value).join('');
+  const code=document.getElementById('codeInput').value.trim();
   if(code===localStorage.getItem('verificationCode')){
-    localStorage.setItem('loggedIn','true');
+    alert('Verified Successfully!');
     closeAllWindows();
-  }else{alert('Invalid code');}
+  }else{alert('Invalid Code');}
 }
 function startDelete(){
-  sendVerificationEmail(prompt('Enter your email to verify account deletion:'));
-  openVerifyWindow();
+  const email=prompt('Enter your email to verify deletion:');
+  if(email){sendVerificationEmail(email);openVerifyWindow();}
 }
 function generateShortDeviceId(){
   const letters=Math.random().toString(36).substring(2,6).toUpperCase();
@@ -187,3 +181,4 @@ function generateShortDeviceId(){
 
 </body>
 </html>
+Test 2.1
