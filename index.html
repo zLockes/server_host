@@ -17,15 +17,16 @@ body{margin:0;padding:0;font-family:'Segoe UI',sans-serif;background:linear-grad
 .menu button{background:rgba(255,255,255,0.2);color:white;border:none;padding:10px;margin:5px 0;border-radius:8px;cursor:pointer;}
 .container{flex-grow:1;display:flex;justify-content:center;align-items:center;}
 .card{background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);padding:2rem;border-radius:20px;width:100%;max-width:400px;color:white;text-align:center;}
-.card input,.card button{width:100%;padding:10px;margin:8px 0;font-size:1rem;border:none;border-radius:10px;}
-.card button{background:rgba(255,255,255,0.3);cursor:pointer;}
+.card input,.card button{width:100%;padding:10px;margin:8px 0;font-size:1rem;border:none;border-radius:10px;background:rgba(255,255,255,0.2);color:white;}
+.card button{background:rgba(255,255,255,0.3);}
 .card button:hover{background:rgba(255,255,255,0.5);}
 .account-id{margin-top:10px;font-size:0.8rem;opacity:0.8;cursor:pointer;}
 .popup,.modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center;z-index:1000;}
-.popup .modal-content,.modal .modal-content{background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);border-radius:20px;padding:2rem;color:white;text-align:center;}
-.popup input{width:90%;padding:8px;margin:5px 0;border-radius:8px;border:1px solid #ccc;}
+.popup .modal-content,.modal .modal-content{background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);border-radius:20px;padding:2rem;color:white;text-align:center;width:90%;max-width:350px;}
+.popup input{width:90%;padding:10px;margin:5px 0;border-radius:8px;border:none;background:rgba(255,255,255,0.2);color:white;text-align:center;font-size:1.2rem;}
 .loading{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;z-index:2000;color:white;font-size:2rem;}
-#codeBoxes input{width:50px;height:50px;margin:5px auto;display:block;font-size:1.5rem;text-align:center;}
+#codeBoxes{display:flex;flex-direction:column;align-items:center;}
+#codeBoxes input{width:60px;height:60px;margin:5px 0;border-radius:10px;border:none;background:rgba(255,255,255,0.2);color:white;font-size:1.5rem;text-align:center;}
 .icon{width:20px;vertical-align:middle;margin-right:5px;}
 .dark{background:linear-gradient(135deg,#2c3e50,#4ca1af);}
 </style>
@@ -49,7 +50,7 @@ body{margin:0;padding:0;font-family:'Segoe UI',sans-serif;background:linear-grad
   <button onclick="toggleDarkMode()">Toggle Dark Mode</button>
   <button onclick="openLoginWindow()">Login</button>
   <button id="logoutBtn" class="hidden" onclick="logout()">Logout</button>
-  <button id="deleteBtn" class="hidden" onclick="deleteAccount()">Delete Account</button>
+  <button id="deleteBtn" class="hidden" onclick="startDelete()">Delete Account</button>
 </div>
 
 <div class="container">
@@ -65,9 +66,9 @@ body{margin:0;padding:0;font-family:'Segoe UI',sans-serif;background:linear-grad
 <div id="loginWindow" class="popup hidden">
   <div class="modal-content">
     <h2>Login</h2>
-    <button onclick="googleLogin()"><img src="google.png" class="icon"> Google Login</button>
-    <button onclick="openRegisterWindow()"><img src="kbbiglog.png" class="icon"> KBBIG Login</button>
-    <button onclick="closeAllWindows()">Cancel</button>
+    <button onclick="googleLogin()" style="margin:5px;background:rgba(255,255,255,0.2);padding:10px;border-radius:10px;"><img src="google.png" class="icon"> Google Login</button>
+    <button onclick="openRegisterWindow()" style="margin:5px;background:rgba(255,255,255,0.2);padding:10px;border-radius:10px;"><img src="kbbiglog.png" class="icon"> KBBIG Login</button>
+    <button onclick="closeAllWindows()" style="margin-top:10px;">Cancel</button>
   </div>
 </div>
 
@@ -89,56 +90,33 @@ body{margin:0;padding:0;font-family:'Segoe UI',sans-serif;background:linear-grad
   </div>
 </div>
 
-<div id="modal" class="modal hidden">
-  <div id="modal-content"></div>
-</div>
-
 <div id="loading" class="loading">Loading...</div>
 
 <script>
 firebase.initializeApp({
-  apiKey: "AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
-  authDomain: "kbbig-s.firebaseapp.com",
-  databaseURL: "https://kbbig-s-default-rtdb.asia-southeast1.firebasedatabase.app/",
-  projectId: "kbbig-s",
-  storageBucket: "kbbig-s.appspot.com",
-  messagingSenderId: "616380393795",
-  appId: "1:616380393795:web:f95558aadf8b4c520327f6"
+  apiKey:"AIzaSyANkJLaIZwhqwYpgVUzZsIBUtenNMW2QQ0",
+  authDomain:"kbbig-s.firebaseapp.com",
+  databaseURL:"https://kbbig-s-default-rtdb.asia-southeast1.firebasedatabase.app/",
+  projectId:"kbbig-s",
+  storageBucket:"kbbig-s.appspot.com",
+  messagingSenderId:"616380393795",
+  appId:"1:616380393795:web:f95558aadf8b4c520327f6"
 });
-const db = firebase.database();
-const auth = firebase.auth();
+const db=firebase.database();
+const auth=firebase.auth();
 emailjs.init('ebaCK1XoM0ZQla12y');
 
-let deviceId = localStorage.getItem('deviceId') || generateShortDeviceId();
-localStorage.setItem('deviceId', deviceId);
-document.getElementById('deviceId').innerText = deviceId;
+let deviceId=localStorage.getItem('deviceId')||generateShortDeviceId();
+localStorage.setItem('deviceId',deviceId);
+document.getElementById('deviceId').innerText=deviceId;
 
 function toggleMenu(){document.getElementById('menu').classList.toggle('hidden');}
-function toggleDarkMode(){
-  document.body.classList.toggle('dark');
-  document.getElementById('banner').src = document.body.classList.contains('dark') ? 'bannerdark.png' : 'banner.png';
-}
-function uploadProfileImage(){
-  const input=document.createElement('input');
-  input.type='file';
-  input.accept='image/*';
-  input.onchange=e=>{
-    const file=e.target.files[0];
-    if(file){
-      const reader=new FileReader();
-      reader.onload=()=>{
-        document.getElementById('profileIcon').src=reader.result;
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-  input.click();
-}
+function toggleDarkMode(){document.body.classList.toggle('dark');document.getElementById('banner').src=document.body.classList.contains('dark')?'bannerdark.png':'banner.png';}
+function uploadProfileImage(){const input=document.createElement('input');input.type='file';input.accept='image/*';input.onchange=e=>{const file=e.target.files[0];if(file){const reader=new FileReader();reader.onload=()=>{document.getElementById('profileIcon').src=reader.result;};reader.readAsDataURL(file);}};input.click();}
 function openLoginWindow(){closeAllWindows();document.getElementById('loginWindow').classList.remove('hidden');document.getElementById('loginWindow').style.display='flex';}
 function openRegisterWindow(){closeAllWindows();document.getElementById('registerWindow').classList.remove('hidden');document.getElementById('registerWindow').style.display='flex';}
 function closeAllWindows(){document.querySelectorAll('.popup').forEach(e=>{e.classList.add('hidden');e.style.display='none';});}
 function logout(){auth.signOut().then(()=>{localStorage.removeItem('loggedIn');document.getElementById('profileIcon').src="guess-acc.png";location.reload();});}
-function deleteAccount(){openVerifyWindow();}
 function googleLogin(){
   const provider=new firebase.auth.GoogleAuthProvider();
   document.getElementById('loading').style.display='flex';
@@ -154,19 +132,13 @@ function googleLogin(){
     auth.signInWithRedirect(provider);
   });
 }
-async function handleRoom(action){
+function handleRoom(action){
   const name=document.getElementById('playerName').value.trim();
   if(!name)return alert('Enter name');
   let avatar=document.getElementById('profileIcon').src||"guess-acc.png";
   let roomId=document.getElementById('roomCode').value.trim().toUpperCase();
-  if(action==='create'){
-    roomId=Math.random().toString(36).substring(2,6).toUpperCase();
-    await db.ref('rooms/'+roomId).set({players:{[name]:{avatar}},currentTurn:name,status:'waiting'});
-  }else{
-    const snap=await db.ref('rooms/'+roomId).get();
-    if(!snap.exists())return alert('Room not found');
-    await db.ref('rooms/'+roomId+'/players/'+name).set({avatar});
-  }
+  if(action==='create'){roomId=Math.random().toString(36).substring(2,6).toUpperCase();db.ref('rooms/'+roomId).set({players:{[name]:{avatar}},currentTurn:name,status:'waiting'});}
+  else{db.ref('rooms/'+roomId+'/players/'+name).set({avatar});}
   localStorage.setItem('roomId',roomId);
   localStorage.setItem('playerName',name);
   window.location.href='lobby.html';
@@ -185,9 +157,6 @@ function sendVerificationEmail(email){
 }
 function openVerifyWindow(){
   closeAllWindows();
-  const verifyWindow=document.getElementById('verifyWindow');
-  verifyWindow.classList.remove('hidden');
-  verifyWindow.style.display='flex';
   const container=document.getElementById('codeBoxes');
   container.innerHTML='';
   for(let i=0;i<7;i++){
@@ -195,23 +164,26 @@ function openVerifyWindow(){
     input.maxLength=1;
     container.appendChild(input);
   }
+  document.getElementById('verifyWindow').classList.remove('hidden');
+  document.getElementById('verifyWindow').style.display='flex';
 }
 function submitVerification(){
   const code=Array.from(document.querySelectorAll('#codeBoxes input')).map(i=>i.value).join('');
   if(code===localStorage.getItem('verificationCode')){
     localStorage.setItem('loggedIn','true');
     closeAllWindows();
-  }else{
-    alert('Invalid code');
-  }
+  }else{alert('Invalid code');}
+}
+function startDelete(){
+  sendVerificationEmail(prompt('Enter your email to verify account deletion:'));
+  openVerifyWindow();
 }
 function generateShortDeviceId(){
   const letters=Math.random().toString(36).substring(2,6).toUpperCase();
   const numbers=Math.floor(Math.random()*9000+1000);
-  return `${letters}-${numbers}`;
+  return`${letters}-${numbers}`;
 }
 </script>
 
 </body>
 </html>
-test v1
